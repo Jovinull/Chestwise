@@ -1,0 +1,149 @@
+plugins {
+    id 'java-library'
+    id 'jacoco'
+    id 'net.minecraftforge.gradle' version '7.0.35'
+}
+
+group = 'dev.chestwise'
+version = rootProject.providers.gradleProperty('mod.version').get()
+
+base {
+    archivesName = 'chestwise-forge-26.2'
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+minecraft {
+    runs {
+        configureEach {
+            workingDir = layout.projectDirectory.dir('run')
+            systemProperty 'eventbus.api.strictRuntimeChecks', 'true'
+            systemProperty 'forge.enabledGameTestNamespaces', 'chestwise'
+        }
+        register('client')
+        register('server') { args '--nogui' }
+        register('gameTestServer')
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+dependencies {
+    implementation minecraft.dependency('net.minecraftforge:forge:26.2-65.1.2')
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs rootProject.file('versions/26.2-neoforge/build/generated/stonecutter/main/java'), project.file('src/main/java')
+        }
+        resources.srcDirs project.file('src/main/resources'), rootProject.file('src/main/resources')
+    }
+    test {
+        java.srcDir rootProject.file('src/test/java')
+    }
+}
+
+tasks.named('compileJava') {
+    dependsOn ':26.2-neoforge:stonecutterGenerate'
+    source = files(
+        fileTree(rootProject.file('versions/26.2-neoforge/build/generated/stonecutter/main/java')) {
+            exclude 'dev/chestwise/Chestwise.java'
+            exclude 'dev/chestwise/minecraft/ChestwiseContent.java'
+            exclude 'dev/chestwise/minecraft/LoadedContainerDiscovery.java'
+            exclude 'dev/chestwise/platform/ChestwiseNetworking.java'
+            exclude 'dev/chestwise/fabric/**'
+            exclude 'dev/chestwise/neoforge/**'
+            exclude 'dev/chestwise/forge/**'
+        },
+        fileTree(project.file('src/main/java'))
+    )
+}
+
+tasks.named('sourcesJar') {
+    dependsOn ':26.2-neoforge:stonecutterGenerate'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    eachFile { details ->
+        def generated = rootProject.file('versions/26.2-neoforge/build/generated/stonecutter/main/java').toPath()
+        def file = details.file.toPath()
+        if (file.startsWith(generated) && (
+            details.path == 'dev/chestwise/Chestwise.java' ||
+            details.path == 'dev/chestwise/minecraft/ChestwiseContent.java' ||
+            details.path == 'dev/chestwise/minecraft/LoadedContainerDiscovery.java' ||
+            details.path == 'dev/chestwise/platform/ChestwiseNetworking.java' ||
+            details.path.startsWith('dev/chestwise/fabric/') ||
+            details.path.startsWith('dev/chestwise/neoforge/') ||
+            details.path.startsWith('dev/chestwise/forge/')
+        )) {
+            details.exclude()
+        }
+    }
+}
+
+tasks.named('processResources') {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude 'fabric.mod.json', 'META-INF/neoforge.mods.toml'
+    doLast {
+        def output = destinationDir
+        def pack = new File(output, 'pack.mcmeta')
+        pack.text = '''{
+  "pack": {
+    "description": "Chestwise resources",
+    "min_format": 88,
+    "max_format": 107
+  }
+}
+'''
+        def recipe = new File(output, 'data/chestwise/recipe/storage_terminal.json')
+        recipe.parentFile.mkdirs()
+        recipe.text = '''{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IPI",
+    "RCR",
+    "IPI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "P": "minecraft:glass_pane",
+    "R": "minecraft:redstone",
+    "C": "minecraft:crafting_table"
+  },
+  "result": {
+    "id": "chestwise:storage_terminal",
+    "count": 1
+  }
+}
+'''
+    }
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    finalizedBy tasks.jacocoTestReport
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll '-Xlint:all', '-Werror'
+}
+
+jar {
+    manifest.attributes([
+        'Specification-Title': 'Chestwise',
+        'Specification-Version': project.version,
+        'Implementation-Title': 'Chestwise Forge 26.2',
+        'Implementation-Version': project.version
+    ])
+}
