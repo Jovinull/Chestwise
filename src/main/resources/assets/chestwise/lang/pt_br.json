@@ -6,5 +6,10 @@
   "gui.chestwise.deposit_all": "Guardar Tudo",
   "gui.chestwise.crafting": "Fabricação",
   "gui.chestwise.located": "Armazenado em %s, %s, %s",
-  "gui.chestwise.page": "%s / %s"
+  "gui.chestwise.total": "%s disponíveis",
+  "gui.chestwise.page": "%s / %s",
+  "gui.chestwise.sort.quantity": "Qtd",
+  "gui.chestwise.sort.name": "Nome",
+  "gui.chestwise.sort.namespace": "Mod",
+  "gui.chestwise.sort.registry": "ID"
 }

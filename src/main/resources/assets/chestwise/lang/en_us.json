@@ -6,5 +6,10 @@
   "gui.chestwise.deposit_all": "Deposit All",
   "gui.chestwise.crafting": "Crafting",
   "gui.chestwise.located": "Stored at %s, %s, %s",
-  "gui.chestwise.page": "%s / %s"
+  "gui.chestwise.total": "%s available",
+  "gui.chestwise.page": "%s / %s",
+  "gui.chestwise.sort.quantity": "Qty",
+  "gui.chestwise.sort.name": "Name",
+  "gui.chestwise.sort.namespace": "Mod",
+  "gui.chestwise.sort.registry": "ID"
 }

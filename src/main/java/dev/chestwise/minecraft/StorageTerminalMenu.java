@@ -32,6 +32,7 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
     public static final int COLUMNS = 9;
     public static final int ROWS = 5;
     public static final int DISPLAY_SLOTS = COLUMNS * ROWS;
+    public static final int PLAYER_STORAGE_SLOTS = 36;
     public static final int CRAFT_START = DISPLAY_SLOTS;
     public static final int CRAFT_END = CRAFT_START + 9;
     public static final int RESULT_SLOT = CRAFT_END;
@@ -43,8 +44,10 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
     public static final int BUTTON_DEPOSIT_ALL = 4;
     public static final int BUTTON_SCROLL_WITHDRAW_BASE = 100;
     public static final int BUTTON_SCROLL_DEPOSIT_BASE = 200;
+    public static final int BUTTON_PROTECT_BASE = 300;
 
     private final SimpleContainer display = new SimpleContainer(DISPLAY_SLOTS);
+    private final long[] displayCounts = new long[DISPLAY_SLOTS];
     private final List<ItemIdentity> identities = new ArrayList<>(DISPLAY_SLOTS);
     private final Set<Integer> protectedSlots = new HashSet<>();
     private final TransientCraftingContainer crafting = new TransientCraftingContainer(this, 3, 3);
@@ -107,6 +110,27 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         addDataSlot(protectionData(0));
         addDataSlot(protectionData(16));
         addDataSlot(protectionData(32));
+        for (int slot = 0; slot < DISPLAY_SLOTS; slot++) {
+            for (int part = 0; part < Long.SIZE / Short.SIZE; part++) {
+                addDataSlot(countData(slot, part));
+            }
+        }
+    }
+
+    private DataSlot countData(int slot, int part) {
+        int shift = part * Short.SIZE;
+        return new DataSlot() {
+            @Override
+            public int get() {
+                return (int) (displayCounts[slot] >>> shift & 0xffffL);
+            }
+
+            @Override
+            public void set(int value) {
+                long mask = 0xffffL << shift;
+                displayCounts[slot] = displayCounts[slot] & ~mask | (long) (value & 0xffff) << shift;
+            }
+        };
     }
 
     private DataSlot protectionData(int offset) {
@@ -166,6 +190,7 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             int resultIndex = offset + slot;
             if (resultIndex >= results.size()) {
                 display.setItem(slot, ItemStack.EMPTY);
+                displayCounts[slot] = 0;
                 identities.set(slot, null);
                 continue;
             }
@@ -173,11 +198,13 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             ItemStack representative = terminal.representative(indexed.descriptor().identity());
             if (representative.isEmpty()) {
                 display.setItem(slot, ItemStack.EMPTY);
+                displayCounts[slot] = 0;
                 identities.set(slot, null);
                 continue;
             }
-            representative.setCount((int) Math.min(representative.getMaxStackSize(), indexed.totalCount()));
+            representative.setCount(1);
             display.setItem(slot, representative);
+            displayCounts[slot] = indexed.totalCount();
             identities.set(slot, indexed.descriptor().identity());
         }
         broadcastChanges();
@@ -200,9 +227,7 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         }
         if (terminal != null && slotId >= PLAYER_START && button == 2 && isPickup(clickType)) {
             int inventorySlot = slots.get(slotId).getContainerSlot();
-            if (!protectedSlots.add(inventorySlot)) {
-                protectedSlots.remove(inventorySlot);
-            }
+            toggleProtected(inventorySlot);
             broadcastChanges();
             return;
         }
@@ -270,7 +295,8 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         if (quickMove) {
             requested = shown.getMaxStackSize();
         } else if (button == 1) {
-            requested = Math.max(1, shown.getCount() / 2);
+            long visibleStack = Math.min(shown.getMaxStackSize(), displayCounts[displaySlot]);
+            requested = Math.max(1, (int) visibleStack / 2);
         } else {
             ItemStack carried = getCarried();
             if (!carried.isEmpty() && !ItemStackIdentity.sameVariant(carried, shown)) {
@@ -417,6 +443,11 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             refresh();
             return true;
         }
+        if (id >= BUTTON_PROTECT_BASE && id < BUTTON_PROTECT_BASE + PLAYER_STORAGE_SLOTS) {
+            toggleProtected(id - BUTTON_PROTECT_BASE);
+            broadcastChanges();
+            return true;
+        }
         switch (id) {
             case BUTTON_PREVIOUS -> page = Math.max(0, page - 1);
             case BUTTON_NEXT -> page = Math.min(totalPages - 1, page + 1);
@@ -449,7 +480,9 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             return;
         }
         Inventory inventory = player.getInventory();
-        for (int inventorySlot = 0; inventorySlot < inventory.getContainerSize(); inventorySlot++) {
+        for (int inventorySlot = 0;
+             inventorySlot < Math.min(PLAYER_STORAGE_SLOTS, inventory.getContainerSize());
+             inventorySlot++) {
             if (protectedSlots.contains(inventorySlot)) {
                 continue;
             }
@@ -469,7 +502,7 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
 
     private void depositInventory(Player player, boolean matchingOnly) {
         Inventory inventory = player.getInventory();
-        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+        for (int slot = 0; slot < Math.min(PLAYER_STORAGE_SLOTS, inventory.getContainerSize()); slot++) {
             if (protectedSlots.contains(slot)) {
                 continue;
             }
@@ -500,6 +533,19 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
 
     public boolean isProtectedInventorySlot(int inventorySlot) {
         return protectedSlots.contains(inventorySlot);
+    }
+
+    private void toggleProtected(int inventorySlot) {
+        if (inventorySlot < 0 || inventorySlot >= PLAYER_STORAGE_SLOTS) {
+            return;
+        }
+        if (!protectedSlots.add(inventorySlot)) {
+            protectedSlots.remove(inventorySlot);
+        }
+    }
+
+    public long displayCount(int displaySlot) {
+        return displaySlot >= 0 && displaySlot < DISPLAY_SLOTS ? displayCounts[displaySlot] : 0;
     }
 
     private static boolean isClientSide(Player player) {

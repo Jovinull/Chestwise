@@ -22,15 +22,22 @@ final class ChestwiseClientPreferencesTest {
         assertFalse(initial.mouseWheelTransfer());
 
         initial.setSortMode(SortMode.NAMESPACE);
-        assertEquals(SortMode.NAMESPACE, ChestwiseClientPreferences.load(file).sortMode());
+        initial.toggleProtectedSlot(0);
+        initial.toggleProtectedSlot(27);
+        ChestwiseClientPreferences reloaded = ChestwiseClientPreferences.load(file);
+        assertEquals(SortMode.NAMESPACE, reloaded.sortMode());
+        assertEquals(java.util.Set.of(0, 27), reloaded.protectedSlots());
     }
 
     @Test
     void malformedValuesFallBackIndependently() throws IOException {
         Path file = temporaryDirectory.resolve("chestwise-client.properties");
-        Files.writeString(file, "sortMode=not-a-mode\nmouseWheelTransfer=also-not-a-boolean\n");
+        Files.writeString(file,
+            "sortMode=not-a-mode\nmouseWheelTransfer=also-not-a-boolean\nprotectedSlots=-1,three,8,40\n");
         ChestwiseClientPreferences preferences = ChestwiseClientPreferences.load(file);
         assertEquals(SortMode.QUANTITY, preferences.sortMode());
         assertFalse(preferences.mouseWheelTransfer());
+        assertEquals(java.util.Set.of(8), preferences.protectedSlots());
     }
+
 }

@@ -18,6 +18,11 @@ import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
+//? if < 26.2 {
+import net.minecraft.world.inventory.ClickType;
+//?} else {
+/*import net.minecraft.world.inventory.ContainerInput;
+*///?}
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -68,7 +73,7 @@ public final class ChestwiseGameTests implements FabricGameTest {
             helper.destroyBlock(chestPosition);
         });
         helper.runAfterDelay(15, () -> {
-            List<IndexedItem> diamonds = terminal.search("diamond", SortMode.QUANTITY);
+            List<IndexedItem> diamonds = exactDiamonds(terminal);
             helper.assertTrue(diamonds.isEmpty(), "Removed container remained in the terminal index");
             helper.succeed();
         });
@@ -102,10 +107,119 @@ public final class ChestwiseGameTests implements FabricGameTest {
         helper.succeed();
     }
 
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void keepsDamagedToolsAsExactSeparateVariants(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        ItemStack lightlyUsed = new ItemStack(Items.DIAMOND_SWORD);
+        lightlyUsed.setDamageValue(1);
+        ItemStack heavilyUsed = new ItemStack(Items.DIAMOND_SWORD);
+        heavilyUsed.setDamageValue(100);
+        chest.setItem(0, lightlyUsed);
+        chest.setItem(1, heavilyUsed);
+
+        helper.runAfterDelay(5, () -> {
+            List<IndexedItem> swords = terminal.search("diamond_sword", SortMode.REGISTRY);
+            helper.assertTrue(swords.size() == 2, "Different damage components were aggregated together");
+            ItemStack withdrawn = terminal.withdraw(dev.chestwise.minecraft.ItemStackIdentity.identity(lightlyUsed), 1);
+            helper.assertTrue(withdrawn.is(Items.DIAMOND_SWORD) && withdrawn.getDamageValue() == 1,
+                "Withdrawing one exact tool variant returned another variant");
+            helper.assertTrue(chest.getItem(1).getDamageValue() == 100,
+                "Withdrawing one exact tool variant mutated another variant");
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void menuIntentsRespectMatchingAndProtectedSlots(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.GOLD_INGOT, 10));
+
+        helper.runAfterDelay(5, () -> {
+            ServerPlayer player = helper.makeMockServerPlayerInLevel();
+            BlockPos terminalWorldPosition = terminal.getBlockPos();
+            player.setPos(terminalWorldPosition.getX() + 0.5, terminalWorldPosition.getY() + 0.5,
+                terminalWorldPosition.getZ() + 0.5);
+            player.getInventory().setItem(9, new ItemStack(Items.GOLD_INGOT, 5));
+            player.getInventory().setItem(10, new ItemStack(Items.EMERALD, 4));
+            player.getInventory().setItem(36, new ItemStack(Items.IRON_BOOTS));
+            player.getInventory().setItem(40, new ItemStack(Items.TORCH, 7));
+            StorageTerminalMenu menu = new StorageTerminalMenu(2, player.getInventory(), terminal);
+            menu.updateQuery("gold ingot");
+            helper.assertTrue(menu.displayCount(0) == 10,
+                "Menu did not synchronize the exact aggregate count for its display slot");
+
+            //? if < 26.2 {
+            menu.clicked(StorageTerminalMenu.PLAYER_START, 2, ClickType.PICKUP, player);
+            //?} else {
+            /*menu.clicked(StorageTerminalMenu.PLAYER_START, 2, ContainerInput.PICKUP, player);
+            *///?}
+            helper.assertTrue(menu.isProtectedInventorySlot(9), "Middle click did not protect the player slot");
+            helper.assertTrue(menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_DEPOSIT_MATCHING),
+                "Server rejected a valid deposit-matching intent");
+            helper.assertTrue(chest.getItem(0).getCount() == 10 && player.getInventory().getItem(9).getCount() == 5,
+                "Bulk deposit ignored slot protection");
+            helper.assertTrue(player.getInventory().getItem(10).getCount() == 4,
+                "Deposit matching moved an unrepresented item");
+
+            helper.assertTrue(menu.clickMenuButton(
+                player,
+                StorageTerminalMenu.BUTTON_PROTECT_BASE + 9
+            ), "Server rejected a valid persisted-slot protection intent");
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_DEPOSIT_MATCHING);
+            helper.assertTrue(chest.getItem(0).getCount() == 15 && player.getInventory().getItem(9).isEmpty(),
+                "Deposit matching did not move the represented exact variant");
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_DEPOSIT_ALL);
+            helper.assertTrue(player.getInventory().getItem(10).isEmpty(), "Deposit all left an eligible stack behind");
+            helper.assertTrue(chest.getItem(1).is(Items.EMERALD) && chest.getItem(1).getCount() == 4,
+                "Deposit all did not update the physical container");
+            helper.assertTrue(player.getInventory().getItem(36).is(Items.IRON_BOOTS),
+                "Deposit all moved equipped armor outside the 36 storage slots");
+            helper.assertTrue(player.getInventory().getItem(40).is(Items.TORCH)
+                    && player.getInventory().getItem(40).getCount() == 7,
+                "Deposit all moved the offhand slot outside the 36 storage slots");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
     private static void assertCount(GameTestHelper helper, StorageTerminalBlockEntity terminal, long expected) {
-        List<IndexedItem> diamonds = terminal.search("diamond", SortMode.QUANTITY);
+        List<IndexedItem> diamonds = exactDiamonds(terminal);
         helper.assertTrue(diamonds.size() == 1, "Expected one indexed diamond variant");
         helper.assertTrue(diamonds.get(0).totalCount() == expected, "Unexpected indexed diamond count");
+    }
+
+    private static List<IndexedItem> exactDiamonds(StorageTerminalBlockEntity terminal) {
+        return terminal.search("diamond", SortMode.QUANTITY).stream()
+            .filter(item -> item.descriptor().identity().itemId().equals("minecraft:diamond"))
+            .toList();
     }
 }
 //?}

@@ -1,8 +1,12 @@
 package dev.chestwise.minecraft.client;
 
 import dev.chestwise.platform.ChestwiseNetworking;
+import dev.chestwise.core.AggregateCountFormat;
 import dev.chestwise.core.SortMode;
 import dev.chestwise.minecraft.StorageTerminalMenu;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 //? if < 26.2 {
 import net.minecraft.client.gui.GuiGraphics;
 //?} else {
@@ -14,6 +18,13 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.ChatFormatting;
+//? if < 26.2 {
+import net.minecraft.world.inventory.ClickType;
+//?} else {
+/*import net.minecraft.world.inventory.ContainerInput;
+*///?}
 
 public final class StorageTerminalScreen extends AbstractContainerScreen<StorageTerminalMenu> {
     private static final int BACKGROUND = 0xffc6c6c6;
@@ -62,8 +73,40 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
             for (int step = 0; step < sortSteps; step++) {
                 minecraft.gameMode.handleInventoryButtonClick(menu.containerId, StorageTerminalMenu.BUTTON_SORT);
             }
+            for (int slot : preferences.protectedSlots()) {
+                if (!menu.isProtectedInventorySlot(slot)) {
+                    minecraft.gameMode.handleInventoryButtonClick(
+                        menu.containerId,
+                        StorageTerminalMenu.BUTTON_PROTECT_BASE + slot
+                    );
+                }
+            }
         }
         setInitialFocus(search);
+    }
+
+    @Override
+    protected void slotClicked(
+        Slot slot,
+        int slotId,
+        int button,
+        //? if < 26.2 {
+        ClickType clickType
+        //?} else {
+        /*ContainerInput clickType
+        *///?}
+    ) {
+        if (preferences != null && slot != null && slotId >= StorageTerminalMenu.PLAYER_START
+            && button == 2
+            //? if < 26.2 {
+            && clickType == ClickType.PICKUP
+            //?} else {
+            /*&& clickType == ContainerInput.PICKUP
+            *///?}
+        ) {
+            preferences.toggleProtectedSlot(slot.getContainerSlot());
+        }
+        super.slotClicked(slot, slotId, button, clickType);
     }
 
     private Button button(int x, int y, int width, String label, int id) {
@@ -127,9 +170,51 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
         /*renderBackground(graphics, mouseX, mouseY, partialTick);
         *//*?}*/
         super.render(graphics, mouseX, mouseY, partialTick);
+        renderAggregatedCounts(graphics);
         renderTooltip(graphics, mouseX, mouseY);
     }
+
+    private void renderAggregatedCounts(GuiGraphics graphics) {
+        for (int slot = 0; slot < StorageTerminalMenu.DISPLAY_SLOTS; slot++) {
+            long count = menu.displayCount(slot);
+            if (count <= 1) {
+                continue;
+            }
+            String label = AggregateCountFormat.compact(count);
+            int x = leftPos + 8 + slot % StorageTerminalMenu.COLUMNS * 18 + 16 - font.width(label);
+            int y = topPos + 32 + slot / StorageTerminalMenu.COLUMNS * 18 + 8;
+            graphics.drawString(font, label, x, y, 0xffffff, true);
+        }
+    }
     //?}
+
+    /*? if >= 26.2 {*/
+    /*@Override
+    protected void extractSlot(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY) {
+        super.extractSlot(graphics, slot, mouseX, mouseY);
+        if (slot.index >= StorageTerminalMenu.DISPLAY_SLOTS) {
+            return;
+        }
+        long count = menu.displayCount(slot.index);
+        if (count <= 1) {
+            return;
+        }
+        String label = AggregateCountFormat.compact(count);
+        graphics.text(font, Component.literal(label), slot.x + 16 - font.width(label), slot.y + 8, 0xffffff, true);
+    }
+    *//*?}*/
+
+    @Override
+    protected List<Component> getTooltipFromContainerItem(net.minecraft.world.item.ItemStack stack) {
+        List<Component> tooltip = new ArrayList<>(super.getTooltipFromContainerItem(stack));
+        if (hoveredSlot != null && hoveredSlot.index < StorageTerminalMenu.DISPLAY_SLOTS) {
+            long count = menu.displayCount(hoveredSlot.index);
+            if (count > 0) {
+                tooltip.add(Component.translatable("gui.chestwise.total", Long.toString(count)).withStyle(ChatFormatting.GRAY));
+            }
+        }
+        return tooltip;
+    }
 
     @Override
     //? if < 26.2 {
@@ -155,6 +240,30 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
         }
         graphics.fill(leftPos + 219, topPos + 159, leftPos + 237, topPos + 177, 0xff555555);
         graphics.fill(leftPos + 220, topPos + 160, leftPos + 236, topPos + 176, SLOT);
+        for (int row = 0; row < 3; row++) {
+            for (int column = 0; column < 9; column++) {
+                int inventorySlot = column + row * 9 + 9;
+                drawPlayerSlot(graphics, 7 + column * 18, 139 + row * 18, inventorySlot);
+            }
+        }
+        for (int column = 0; column < 9; column++) {
+            drawPlayerSlot(graphics, 7 + column * 18, 197, column);
+        }
+    }
+
+    private void drawPlayerSlot(
+        //? if < 26.2 {
+        GuiGraphics graphics,
+        //?} else {
+        /*GuiGraphicsExtractor graphics,
+        *///?}
+        int x,
+        int y,
+        int inventorySlot
+    ) {
+        int inner = menu.isProtectedInventorySlot(inventorySlot) ? 0xffb07a2a : SLOT;
+        graphics.fill(leftPos + x, topPos + y, leftPos + x + 18, topPos + y + 18, 0xff555555);
+        graphics.fill(leftPos + x + 1, topPos + y + 1, leftPos + x + 17, topPos + y + 17, inner);
     }
 
     @Override
@@ -169,13 +278,20 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
         graphics.drawString(font, Component.translatable("gui.chestwise.crafting"), 184, inventoryLabelY, 0x303030, false);
         Component pageText = Component.translatable("gui.chestwise.page", menu.page() + 1, menu.totalPages());
         graphics.drawString(font, pageText, 116, 6, 0x303030, false);
+        graphics.drawString(font, sortLabel(), 171, 19, 0xe0e0e0, false);
         //?} else {
         /*graphics.text(font, title, titleLabelX, titleLabelY, 0x303030, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x303030, false);
         graphics.text(font, Component.translatable("gui.chestwise.crafting"), 184, inventoryLabelY, 0x303030, false);
         Component pageText = Component.translatable("gui.chestwise.page", menu.page() + 1, menu.totalPages());
         graphics.text(font, pageText, 116, 6, 0x303030, false);
+        graphics.text(font, sortLabel(), 171, 19, 0xe0e0e0, false);
         *///?}
+    }
+
+    private Component sortLabel() {
+        String name = menu.sortMode().name().toLowerCase(Locale.ROOT);
+        return Component.translatable("gui.chestwise.sort." + name);
     }
 
     @Override
