@@ -8,6 +8,7 @@ modId = "chestwise"
 version = "${file.jarVersion}"
 displayName = "Chestwise"
 authors = "Chestwise contributors"
+logoFile = "assets/chestwise/icon.png"
 description = '''Your storage already is the network. Search, move, craft, and organize items without cables, power, disks, or virtual storage.'''
 
 [[dependencies.chestwise]]

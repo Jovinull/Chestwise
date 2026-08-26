@@ -10,6 +10,7 @@
     "issues": "https://github.com/chestwise/chestwise/issues"
   },
   "license": "MIT",
+  "icon": "assets/chestwise/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": ["dev.chestwise.Chestwise"],

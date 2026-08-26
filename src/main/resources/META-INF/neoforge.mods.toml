@@ -8,6 +8,7 @@ modId = "${id}"
 version = "${version}"
 displayName = "${name}"
 authors = "Chestwise contributors"
+logoFile = "assets/chestwise/icon.png"
 description = '''${description}'''
 
 [[dependencies.${id}]]
@@ -16,4 +17,3 @@ type = "required"
 versionRange = "[${minecraftVersion}]"
 ordering = "NONE"
 side = "BOTH"
-
