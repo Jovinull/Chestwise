@@ -1,0 +1,108 @@
+plugins {
+    id 'java-library'
+    id 'jacoco'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.91'
+}
+
+group = 'dev.chestwise'
+version = rootProject.providers.gradleProperty('mod.version').get()
+
+base {
+    archivesName = 'chestwise-neoforge-1.20.1'
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+    withSourcesJar()
+}
+
+legacyForge {
+    enable {
+        neoForgeVersion = '1.20.1-47.1.106'
+    }
+    runs {
+        client { client() }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        gameTestServer { type = 'gameTestServer' }
+        configureEach {
+            systemProperty 'forge.enabledGameTestNamespaces', 'chestwise'
+        }
+    }
+    mods {
+        chestwise { sourceSet sourceSets.main }
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs rootProject.file('versions/1.20.1-forge/build/generated/stonecutter/main/java')
+        }
+        resources.srcDirs project.file('src/main/resources'), rootProject.file('src/main/resources')
+    }
+    test {
+        java.srcDir rootProject.file('src/test/java')
+    }
+}
+
+tasks.named('compileJava') {
+    dependsOn ':1.20.1-forge:stonecutterGenerate'
+}
+
+tasks.named('sourcesJar') {
+    dependsOn ':1.20.1-forge:stonecutterGenerate'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude 'fabric.mod.json', 'META-INF/neoforge.mods.toml'
+}
+
+tasks.named('processResources') {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude 'fabric.mod.json', 'META-INF/neoforge.mods.toml'
+    doLast {
+        def output = destinationDir
+        new File(output, 'pack.mcmeta').text = '''{
+  "pack": {
+    "description": "Chestwise resources",
+    "pack_format": 15
+  }
+}
+'''
+        copy {
+            from new File(output, 'data/chestwise/recipe')
+            into new File(output, 'data/chestwise/recipes')
+        }
+        copy {
+            from new File(output, 'data/chestwise/loot_table')
+            into new File(output, 'data/chestwise/loot_tables')
+        }
+    }
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.17'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    finalizedBy tasks.jacocoTestReport
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll '-Xlint:all', '-Werror'
+}
+
+jar {
+    manifest.attributes([
+        'Specification-Title': 'Chestwise',
+        'Specification-Version': project.version,
+        'Implementation-Title': 'Chestwise NeoForge 1.20.1',
+        'Implementation-Version': project.version
+    ])
+}
