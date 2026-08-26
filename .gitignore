@@ -14,6 +14,7 @@ versions/*/run/
 versions/*/runs/
 versions/*/logs/
 platforms/*/server-test/
+**/server-test/
 
 # ides
 .idea/
@@ -28,8 +29,5 @@ replay_pid*
 
 # misc local artifacts
 *.log
-scripts/__pycache__/
+__pycache__/
 *.pyc
-
-# internal docs, not published
-docs/
