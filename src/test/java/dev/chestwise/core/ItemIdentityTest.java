@@ -18,8 +18,25 @@ class ItemIdentityTest {
     }
 
     @Test
+    void opaqueExactDataDoesNotTrustItsDisplayString() {
+        SameTextData firstData = new SameTextData(1);
+        SameTextData secondData = new SameTextData(2);
+        ItemIdentity first = ItemIdentity.exact("example:component_item", firstData, firstData.toString());
+        ItemIdentity second = ItemIdentity.exact("example:component_item", secondData, secondData.toString());
+
+        assertNotEquals(first, second);
+        assertNotEquals(0, first.compareTo(second));
+    }
+
+    @Test
     void rejectsUnnamespacedIds() {
         assertThrows(IllegalArgumentException.class, () -> ItemIdentity.simple("diamond"));
     }
-}
 
+    private record SameTextData(int value) {
+        @Override
+        public String toString() {
+            return "same-text";
+        }
+    }
+}

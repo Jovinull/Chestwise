@@ -15,12 +15,14 @@ public final class ItemStackIdentity {
     public static ItemIdentity identity(ItemStack stack) {
         String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         //? if <= 1.20.1 {
-        String data = stack.hasTag() ? stack.getTag().toString() : "";
+        Object exactData = stack.hasTag() ? stack.getTag().copy() : "";
+        String canonicalData = stack.hasTag() ? stack.getTag().toString() : "";
         //?}
         /*? if > 1.20.1 {*/
-        /*String data = stack.getComponentsPatch().toString();
+        /*Object exactData = stack.getComponentsPatch();
+        String canonicalData = stack.getComponentsPatch().toString();
         *//*?}*/
-        return new ItemIdentity(id, data);
+        return ItemIdentity.exact(id, exactData, canonicalData);
     }
 
     public static ItemDescriptor describe(ItemStack stack) {
