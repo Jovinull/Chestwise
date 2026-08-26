@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+            25
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build and test all nine variants
+        run: >-
+          ./gradlew
+          :1.20.1-fabric:build :1.20.1-forge:build :legacy-neoforge-1.20.1:build
+          :1.21.1-fabric:build :1.21.1-forge:build :1.21.1-neoforge:build
+          :26.2-fabric:build :forge-26.2:build :26.2-neoforge:build
+          --stacktrace
+      - name: Run Fabric game tests
+        run: >-
+          ./gradlew
+          :1.20.1-fabric:runGameTestServer
+          :1.21.1-fabric:runGameTestServer
+          :26.2-fabric:runGameTestServer
+          --stacktrace
+      - name: Audit and assemble release files
+        run: python3 scripts/audit_artifacts.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chestwise-release
+          path: build/release/*
+          if-no-files-found: error
+
+  loader-smoke:
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - { minecraft: 1.20.1, loader: fabric, loader_version: 0.19.3, java: 17, fabric_api: "--fabric-api 0.92.11+1.20.1" }
+          - { minecraft: 1.20.1, loader: forge, loader_version: 1.20.1-47.4.23, java: 17, fabric_api: "" }
+          - { minecraft: 1.20.1, loader: neoforge, loader_version: 1.20.1-47.1.106, java: 17, fabric_api: "" }
+          - { minecraft: 1.21.1, loader: fabric, loader_version: 0.19.3, java: 21, fabric_api: "--fabric-api 0.116.15+1.21.1" }
+          - { minecraft: 1.21.1, loader: forge, loader_version: 1.21.1-52.1.16, java: 21, fabric_api: "" }
+          - { minecraft: 1.21.1, loader: neoforge, loader_version: 21.1.248, java: 21, fabric_api: "" }
+          - { minecraft: 26.2, loader: fabric, loader_version: 0.19.3, java: 25, fabric_api: "--fabric-api 0.158.0+26.2" }
+          - { minecraft: 26.2, loader: forge, loader_version: 26.2-65.1.2, java: 25, fabric_api: "" }
+          - { minecraft: 26.2, loader: neoforge, loader_version: 26.2.0.67, java: 25, fabric_api: "" }
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - uses: actions/download-artifact@v5
+        with:
+          name: chestwise-release
+          path: build/release
+      - name: Boot packaged artifact on official loader server
+        run: >-
+          python3 scripts/loader_smoke_test.py
+          --minecraft ${{ matrix.minecraft }}
+          --loader ${{ matrix.loader }}
+          --loader-version ${{ matrix.loader_version }}
+          --artifact build/release/chestwise-${{ matrix.loader }}-${{ matrix.minecraft }}-0.1.0.jar
+          ${{ matrix.fabric_api }}
+
+  quilt-smoke:
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { minecraft: 1.20.1, java: 17, fabric_api: 0.92.11+1.20.1 }
+          - { minecraft: 1.21.1, java: 21, fabric_api: 0.116.15+1.21.1 }
+          - { minecraft: 26.2, java: 25, fabric_api: 0.158.0+26.2 }
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - uses: actions/download-artifact@v5
+        with:
+          name: chestwise-release
+          path: build/release
+      - name: Boot packaged Fabric artifact on Quilt
+        run: >-
+          python3 scripts/quilt_smoke_test.py
+          --minecraft ${{ matrix.minecraft }}
+          --fabric-api ${{ matrix.fabric_api }}
+          --artifact build/release/chestwise-fabric-${{ matrix.minecraft }}-0.1.0.jar
+
+  publish:
+    needs: [package, loader-smoke, quilt-smoke]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: chestwise-release
+          path: build/release
+      - name: Publish GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" build/release/* --verify-tag --generate-notes --repo "${GITHUB_REPOSITORY}"
