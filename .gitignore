@@ -1,0 +1,35 @@
+# build tooling and caches
+.gradle/
+.toolchains/
+build/
+out/
+
+# local run / dev server state
+run/
+runs/
+logs/
+versions/*/.gradle/
+versions/*/build/
+versions/*/run/
+versions/*/runs/
+versions/*/logs/
+platforms/*/server-test/
+
+# ides
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# jvm crash dumps
+hs_err_pid*
+replay_pid*
+
+# misc local artifacts
+*.log
+scripts/__pycache__/
+*.pyc
+
+# internal docs, not published
+docs/
