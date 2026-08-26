@@ -8,6 +8,12 @@ plugins {
 group = "dev.chestwise"
 version = providers.gradleProperty("mod.version").get()
 
+val chestwiseLoader = project.name.substringAfterLast('-')
+val chestwiseMinecraft = project.name.substringBeforeLast('-')
+base {
+    archivesName.set("chestwise-$chestwiseLoader-$chestwiseMinecraft")
+}
+
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
