@@ -78,6 +78,8 @@ tasks.named('processResources') {
             from new File(output, 'data/chestwise/loot_table')
             into new File(output, 'data/chestwise/loot_tables')
         }
+        project.delete new File(output, 'data/chestwise/recipe')
+        project.delete new File(output, 'data/chestwise/loot_table')
     }
 }
 
