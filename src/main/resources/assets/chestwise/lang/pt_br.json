@@ -1,0 +1,10 @@
+{
+  "block.chestwise.storage_terminal": "Terminal de Armazenamento",
+  "container.chestwise.storage_terminal": "Terminal de Armazenamento",
+  "gui.chestwise.search": "Pesquisar itens...",
+  "gui.chestwise.deposit_matching": "Guardar Iguais",
+  "gui.chestwise.deposit_all": "Guardar Tudo",
+  "gui.chestwise.crafting": "Fabricação",
+  "gui.chestwise.located": "Armazenado em %s, %s, %s",
+  "gui.chestwise.page": "%s / %s"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "${description}",
+  "authors": ["Chestwise contributors"],
+  "contact": {
+    "sources": "https://github.com/chestwise/chestwise",
+    "issues": "https://github.com/chestwise/chestwise/issues"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.chestwise.Chestwise"],
+    "client": ["dev.chestwise.fabric.ChestwiseFabricClient"],
+    "fabric-gametest": ["dev.chestwise.fabric.ChestwiseGameTests"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric-api": ">=${fabricVersion}",
+    "minecraft": "${minecraftVersion}"
+  }
+}

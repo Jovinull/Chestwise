@@ -1,0 +1,10 @@
+{
+  "block.chestwise.storage_terminal": "Storage Terminal",
+  "container.chestwise.storage_terminal": "Storage Terminal",
+  "gui.chestwise.search": "Search items...",
+  "gui.chestwise.deposit_matching": "Quick Stack",
+  "gui.chestwise.deposit_all": "Deposit All",
+  "gui.chestwise.crafting": "Crafting",
+  "gui.chestwise.located": "Stored at %s, %s, %s",
+  "gui.chestwise.page": "%s / %s"
+}
