@@ -1,0 +1,129 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  artifacts:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - name: Fabric 1.20.1
+            task: :1.20.1-fabric:build
+            java: 17
+            jar: versions/1.20.1-fabric/build/libs/chestwise-fabric-0.1.0.jar
+          - name: Forge 1.20.1
+            task: :1.20.1-forge:build
+            java: 17
+            jar: versions/1.20.1-forge/build/libs/chestwise-forge-0.1.0.jar
+          - name: NeoForge 1.20.1
+            task: :legacy-neoforge-1.20.1:build
+            java: 17
+            jar: platforms/legacy-neoforge-1.20.1/build/libs/chestwise-neoforge-1.20.1-0.1.0.jar
+          - name: Fabric 1.21.1
+            task: :1.21.1-fabric:build
+            java: 21
+            jar: versions/1.21.1-fabric/build/libs/chestwise-fabric-0.1.0.jar
+          - name: Forge 1.21.1
+            task: :1.21.1-forge:build
+            java: 21
+            jar: versions/1.21.1-forge/build/libs/chestwise-forge-0.1.0.jar
+          - name: NeoForge 1.21.1
+            task: :1.21.1-neoforge:build
+            java: 21
+            jar: versions/1.21.1-neoforge/build/libs/chestwise-neoforge-0.1.0.jar
+          - name: Fabric 26.2
+            task: :26.2-fabric:build
+            java: 25
+            jar: versions/26.2-fabric/build/libs/chestwise-fabric-0.1.0.jar
+          - name: Forge 26.2
+            task: :forge-26.2:build
+            java: 25
+            jar: platforms/forge-26.2/build/libs/chestwise-forge-26.2-0.1.0.jar
+          - name: NeoForge 26.2
+            task: :26.2-neoforge:build
+            java: 25
+            jar: versions/26.2-neoforge/build/libs/chestwise-neoforge-0.1.0.jar
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build and run unit tests
+        run: ./gradlew ${{ matrix.task }} --stacktrace
+      - name: Upload packaged mod
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.jar }}
+          if-no-files-found: error
+
+  fabric-game-tests:
+    name: Fabric game tests ${{ matrix.minecraft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - minecraft: 1.20.1
+            java: 17
+          - minecraft: 1.21.1
+            java: 21
+          - minecraft: 26.2
+            java: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Run server game tests
+        run: ./gradlew :${{ matrix.minecraft }}-fabric:runGameTest --stacktrace
+
+  quilt:
+    name: Quilt ${{ matrix.minecraft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - minecraft: 1.20.1
+            java: 17
+            fabric_api: 0.92.11+1.20.1
+          - minecraft: 1.21.1
+            java: 21
+            fabric_api: 0.116.15+1.21.1
+          - minecraft: 26.2
+            java: 25
+            fabric_api: 0.158.0+26.2
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Package Fabric artifact
+        run: ./gradlew :${{ matrix.minecraft }}-fabric:build --stacktrace
+      - name: Boot packaged artifact on Quilt
+        run: >-
+          python3 scripts/quilt_smoke_test.py
+          --minecraft ${{ matrix.minecraft }}
+          --fabric-api ${{ matrix.fabric_api }}
+          --artifact versions/${{ matrix.minecraft }}-fabric/build/libs/chestwise-fabric-0.1.0.jar
