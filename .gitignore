@@ -31,3 +31,6 @@ replay_pid*
 *.log
 __pycache__/
 *.pyc
+
+# diagnostic renders from the art scripts, regenerate on demand
+art/_preview_*.png
