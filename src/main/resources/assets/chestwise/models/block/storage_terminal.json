@@ -1,9 +1,67 @@
 {
-  "parent": "minecraft:block/cube_bottom_top",
+  "parent": "minecraft:block/block",
   "textures": {
-    "side": "minecraft:block/barrel_side",
-    "top": "minecraft:block/crafting_table_top",
-    "bottom": "minecraft:block/barrel_bottom"
-  }
+    "particle": "chestwise:block/storage_terminal_front",
+    "front": "chestwise:block/storage_terminal_front",
+    "side": "chestwise:block/storage_terminal_side",
+    "back": "chestwise:block/storage_terminal_back",
+    "top": "chestwise:block/storage_terminal_top",
+    "catalogue_top": "chestwise:block/storage_terminal_catalogue_top",
+    "book": "chestwise:block/storage_terminal_book"
+  },
+  "elements": [
+    {
+      "__comment": "Drawer cabinet. Its up face is covered by the worktop.",
+      "__name": "cabinet",
+      "from": [1, 0, 1],
+      "to": [15, 9, 15],
+      "faces": {
+        "north": { "uv": [1, 7, 15, 16], "texture": "#front" },
+        "south": { "uv": [1, 7, 15, 16], "texture": "#back" },
+        "west":  { "uv": [1, 7, 15, 16], "texture": "#side" },
+        "east":  { "uv": [1, 7, 15, 16], "texture": "#side" },
+        "down":  { "uv": [1, 1, 15, 15], "texture": "#back" }
+      }
+    },
+    {
+      "__comment": "Work surface, overhanging the cabinet by one pixel all round.",
+      "__name": "worktop",
+      "from": [0, 9, 0],
+      "to": [16, 11, 16],
+      "faces": {
+        "north": { "uv": [0, 5, 16, 7], "texture": "#front" },
+        "south": { "uv": [0, 5, 16, 7], "texture": "#back" },
+        "west":  { "uv": [0, 5, 16, 7], "texture": "#side" },
+        "east":  { "uv": [0, 5, 16, 7], "texture": "#side" },
+        "up":    { "uv": [0, 0, 16, 16], "texture": "#top" },
+        "down":  { "uv": [0, 5, 16, 7], "texture": "#side" }
+      }
+    },
+    {
+      "__comment": "Card catalogue shelf. Its down face is coplanar with the worktop, so it is omitted.",
+      "__name": "catalogue_shelf",
+      "from": [1, 11, 9],
+      "to": [15, 15, 15],
+      "faces": {
+        "north": { "uv": [1, 1, 15, 5], "texture": "#front" },
+        "south": { "uv": [1, 1, 15, 5], "texture": "#back" },
+        "west":  { "uv": [9, 1, 15, 5], "texture": "#side" },
+        "east":  { "uv": [9, 1, 15, 5], "texture": "#side" },
+        "up":    { "uv": [1, 9, 15, 15], "texture": "#catalogue_top" }
+      }
+    },
+    {
+      "__comment": "Open catalogue on the desk. Down face omitted: it rests on the worktop.",
+      "__name": "open_catalogue",
+      "from": [3, 11, 3],
+      "to": [13, 12, 8],
+      "faces": {
+        "north": { "uv": [3, 7, 13, 8], "texture": "#book" },
+        "south": { "uv": [3, 3, 13, 4], "texture": "#book" },
+        "west":  { "uv": [3, 7, 8, 8], "texture": "#book" },
+        "east":  { "uv": [3, 7, 8, 8], "texture": "#book" },
+        "up":    { "uv": [3, 3, 13, 8], "texture": "#book" }
+      }
+    }
+  ]
 }
-

@@ -1,6 +1,8 @@
 {
   "variants": {
-    "": { "model": "chestwise:block/storage_terminal" }
+    "facing=north": { "model": "chestwise:block/storage_terminal" },
+    "facing=east":  { "model": "chestwise:block/storage_terminal", "y": 90 },
+    "facing=south": { "model": "chestwise:block/storage_terminal", "y": 180 },
+    "facing=west":  { "model": "chestwise:block/storage_terminal", "y": 270 }
   }
 }
-

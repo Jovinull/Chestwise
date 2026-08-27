@@ -220,11 +220,13 @@ public final class ChestwiseContent {
     }
 
     private static BlockBehaviour.Properties terminalProperties() {
+        // noOcclusion: the terminal is a desk, not a full cube, so neighbouring
+        // faces must not be culled against it.
         //? if <= 1.20.1 {
-        return BlockBehaviour.Properties.copy(Blocks.BARREL).strength(2.5F);
+        return BlockBehaviour.Properties.copy(Blocks.BARREL).strength(2.5F).noOcclusion();
         //?}
         /*? if > 1.20.1 {*/
-        /*return BlockBehaviour.Properties.ofFullCopy(Blocks.BARREL).strength(2.5F);
+        /*return BlockBehaviour.Properties.ofFullCopy(Blocks.BARREL).strength(2.5F).noOcclusion();
         *//*?}*/
     }
 }
