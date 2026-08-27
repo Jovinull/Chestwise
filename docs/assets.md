@@ -1,5 +1,24 @@
 # Asset provenance
 
+## Storage Terminal block
+
+`assets/chestwise/textures/block/storage_terminal_*.png` and
+`art/blockbench/storage_terminal.bbmodel` are original assets authored for
+Chestwise on 2026-08-26. No image generator, photograph, upscaler, or
+third-party texture pack was involved: every pixel is placed explicitly by the
+character grids in `art/generate_textures.py`, and the Blockbench source is
+derived from the shipped model by `art/build_bbmodel.py`.
+
+The design brief and the rules the art follows are recorded in
+[`art-direction.md`](art-direction.md). No vanilla texture is copied, and the
+model deliberately avoids the terminal language of Applied Energistics 2,
+Refined Storage, and Tom's Simple Storage.
+
+`art/gui_icons.png` and `art/mod_icon_draft_*.png` are drafts produced the same
+way by `art/generate_icons.py`. They are not shipped inside the jar: the
+terminal's buttons are still text, and the mod icon draft is a proposal that has
+not replaced `icon.png`.
+
 ## Project icon
 
 `src/main/resources/assets/chestwise/icon.png` is an original 256 × 256 raster
