@@ -10,15 +10,23 @@ import net.minecraftforge.network.ChannelBuilder;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 
-/** Forge network bridge. The packet carries search intent, never a mutation plan. */
+/** Forge network bridge. The packet carries intent only, never a mutation plan. */
 public final class ChestwiseNetworking {
+    /** Nine slots of comma-separated item ids need far more room than a search box. */
+    private static final int MAX_PAYLOAD = 1024;
+    private static final int KIND_SEARCH = 0;
+    private static final int KIND_RECIPE = 1;
+
     private static final SimpleChannel CHANNEL = ChannelBuilder.named(ChestwiseContent.id("main"))
         .networkProtocolVersion(1)
         .acceptedVersions(Channel.VersionTest.exact(1))
         .simpleChannel();
-    private static final StreamCodec<RegistryFriendlyByteBuf, SearchIntent> SEARCH_CODEC = StreamCodec.of(
-        (buffer, intent) -> buffer.writeUtf(intent.query, 80),
-        buffer -> new SearchIntent(buffer.readUtf(80))
+    private static final StreamCodec<RegistryFriendlyByteBuf, TerminalIntent> INTENT_CODEC = StreamCodec.of(
+        (buffer, intent) -> {
+            buffer.writeVarInt(intent.kind);
+            buffer.writeUtf(intent.payload, MAX_PAYLOAD);
+        },
+        buffer -> new TerminalIntent(buffer.readVarInt(), buffer.readUtf(MAX_PAYLOAD))
     );
 
     private ChestwiseNetworking() {
@@ -26,30 +34,47 @@ public final class ChestwiseNetworking {
 
     public static void registerServer() {
         CHANNEL.play().serverbound()
-            .addMain(SearchIntent.class, SEARCH_CODEC, ChestwiseNetworking::handleSearch)
+            .addMain(TerminalIntent.class, INTENT_CODEC, ChestwiseNetworking::handleSearch)
             .build();
     }
 
     public static void sendSearch(String query) {
-        CHANNEL.send(new SearchIntent(query), PacketDistributor.SERVER.noArg());
+        send(KIND_SEARCH, query);
     }
 
-    private static void applySearch(net.minecraft.world.inventory.AbstractContainerMenu activeMenu, String query) {
-        if (activeMenu instanceof StorageTerminalMenu menu) {
-            menu.updateQuery(query);
+    /** Asks the server to lay a recipe out on the terminal's crafting grid. */
+    public static void sendRecipe(String encodedSlots) {
+        send(KIND_RECIPE, encodedSlots);
+    }
+
+    private static void send(int kind, String payload) {
+        CHANNEL.send(new TerminalIntent(kind, clamp(payload)), PacketDistributor.SERVER.noArg());
+    }
+
+    private static void applyIntent(net.minecraft.world.entity.player.Player player, int kind, String payload) {
+        if (player == null || !(player.containerMenu instanceof StorageTerminalMenu menu)) {
+            return;
+        }
+        if (kind == KIND_RECIPE) {
+            menu.fillRecipe(player, payload);
+        } else {
+            menu.updateQuery(payload);
         }
     }
 
-    private record SearchIntent(String query) {
-        private SearchIntent {
-            query = query.length() > 80 ? query.substring(0, 80) : query;
-        }
-
+    private static String clamp(String value) {
+        return value.length() > MAX_PAYLOAD ? value.substring(0, MAX_PAYLOAD) : value;
     }
 
-    private static void handleSearch(SearchIntent intent, CustomPayloadEvent.Context context) {
+    private record TerminalIntent(int kind, String payload) {
+        private TerminalIntent {
+            payload = payload.length() > MAX_PAYLOAD ? payload.substring(0, MAX_PAYLOAD) : payload;
+        }
+    }
+
+    private static void handleSearch(TerminalIntent intent, CustomPayloadEvent.Context context) {
         if (context.getSender() != null) {
-            applySearch(context.getSender().containerMenu, intent.query);
+            applyIntent(context.getSender(), intent.kind, intent.payload);
         }
         context.setPacketHandled(true);
     }

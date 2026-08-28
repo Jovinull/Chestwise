@@ -1,4 +1,5 @@
 import gg.meza.stonecraft.mod
+import java.util.Properties
 
 plugins {
     id("gg.meza.stonecraft")
@@ -14,7 +15,47 @@ base {
     archivesName.set("chestwise-$chestwiseLoader-$chestwiseMinecraft")
 }
 
+// Pinned beside the other per-version dependencies rather than duplicated here.
+val chestwisePins: Properties = rootProject.file("versions/dependencies/$chestwiseMinecraft.properties")
+    .inputStream()
+    .use { stream -> Properties().apply { load(stream) } }
+val chestwiseJei: String = chestwisePins.getProperty("jei_version")
+    ?: error("jei_version missing for $chestwiseMinecraft")
+val chestwiseRei: String = chestwisePins.getProperty("rei_version")
+    ?: error("rei_version missing for $chestwiseMinecraft")
+
+repositories {
+    maven("https://maven.blamejared.com")
+    maven("https://maven.shedaniel.me")
+    maven("https://maven.fabricmc.net/")
+}
+
 dependencies {
+    // JEI is compileOnly on purpose: Chestwise must load and work with JEI absent,
+    // and the plugin class is only touched once JEI itself scans for @JeiPlugin.
+    compileOnly("mezz.jei:jei-$chestwiseMinecraft-common-api:$chestwiseJei")
+    // REI ships no Forge build past 1.20.1, so those nodes compile without it and
+    // the plugin source is guarded out for them.
+    // Mapping differs by artifact: the Forge-family jars are Mojang-mapped, and so
+    // is the loader-agnostic one from 26.2 onwards, but the Fabric jars on the
+    // older lines are intermediary and have to go through Loom's remapping.
+    when (chestwiseLoader) {
+        "fabric" -> if (chestwiseMinecraft == "26.2") {
+            compileOnly("me.shedaniel:RoughlyEnoughItems-api:$chestwiseRei")
+        } else {
+            "modCompileOnly"("me.shedaniel:RoughlyEnoughItems-api-fabric:$chestwiseRei")
+        }
+        // The Forge-family artifacts also carry the @REIPluginClient annotation
+        // that those loaders use to discover the plugin.
+        "neoforge" -> {
+            compileOnly("me.shedaniel:RoughlyEnoughItems-api-neoforge:$chestwiseRei")
+            compileOnly("net.fabricmc:fabric-loader:0.16.9")
+        }
+        "forge" -> if (chestwiseMinecraft == "1.20.1") {
+            compileOnly("me.shedaniel:RoughlyEnoughItems-api-forge:$chestwiseRei")
+            compileOnly("net.fabricmc:fabric-loader:0.16.9")
+        }
+    }
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

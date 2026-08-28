@@ -30,6 +30,7 @@ minecraft {
 }
 
 repositories {
+    maven { url = 'https://maven.blamejared.com' }
     minecraft.mavenizer(it)
     maven fg.forgeMaven
     maven fg.minecraftLibsMaven
@@ -37,6 +38,8 @@ repositories {
 }
 
 dependencies {
+    // compileOnly: the mod must load with JEI absent.
+    compileOnly "mezz.jei:jei-26.2-common-api:30.27.0.189"
     implementation minecraft.dependency('net.minecraftforge:forge:26.2-65.1.2')
     testImplementation platform('org.junit:junit-bom:5.13.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -66,6 +69,7 @@ tasks.named('compileJava') {
             exclude 'dev/chestwise/fabric/**'
             exclude 'dev/chestwise/neoforge/**'
             exclude 'dev/chestwise/forge/**'
+            exclude 'dev/chestwise/compat/rei/**'
         },
         fileTree(project.file('src/main/java'))
     )

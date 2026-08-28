@@ -15,7 +15,8 @@
   "entrypoints": {
     "main": ["dev.chestwise.Chestwise"],
     "client": ["dev.chestwise.fabric.ChestwiseFabricClient"],
-    "fabric-gametest": ["dev.chestwise.fabric.ChestwiseGameTests"]
+    "fabric-gametest": ["dev.chestwise.fabric.ChestwiseGameTests"],
+    "rei_client": ["dev.chestwise.compat.rei.ChestwiseReiPlugin"]
   },
   "depends": {
     "fabricloader": ">=0.16.0",
