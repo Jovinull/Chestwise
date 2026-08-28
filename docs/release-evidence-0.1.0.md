@@ -2,7 +2,10 @@
 
 Status: release candidate; not yet approved as a public stable release.
 
-This record captures the automated validation performed on 2026-08-26. It is
+This record captures the automated validation performed on 2026-08-26. Work
+landed after that date (terminal art, GUI fixes, a persistent crafting grid and
+recipe-viewer transfer) has superseded it, so the counts below no longer describe
+the current tree; it must be regenerated before release. It is
 deliberately separate from the interactive and publication gates in
 [`release-checklist.md`](release-checklist.md).
 

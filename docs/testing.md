@@ -14,13 +14,21 @@ Run every normal Stonecutter node:
 
 The suite covers exact item identity, aggregation, search syntax, sorting,
 incremental invalidation, withdrawal planning, deposit priority, safe matching
-deposits, and configuration validation.
+deposits, configuration validation, compact count formatting, and the recipe
+transfer wire format.
 
 ## Fabric game tests
 
 Fabric nodes include server game tests that place real containers, discover and
 index them, withdraw and deposit through the terminal backend, invalidate removed
-containers, and resolve a crafting recipe through Minecraft's recipe manager.
+containers, resolve a crafting recipe through Minecraft's recipe manager, keep a
+shared crafting grid and result coherent across simultaneously open menus,
+return that grid to storage when the terminal is broken, and fill a recipe from
+the inventory before storage without overwriting an unreturned grid stack.
+
+Game tests all run in one world at the same time, and a terminal indexes every
+container within its scan radius. Each test therefore has to use an item no other
+test touches, or terminals index one another's chests and the suite turns flaky.
 
 ```shell
 ./gradlew :1.20.1-fabric:runGameTestServer
@@ -54,6 +62,26 @@ NeoForge dedicated server, copies the release JAR (and Fabric API where needed),
 waits for both Chestwise initialization and Minecraft's ready marker, sends
 `stop`, and requires exit code zero. The release workflow runs this against all
 nine loader/version combinations before publishing any GitHub release assets.
+
+## Recipe viewers
+
+Recipe transfer is optional and compile-only, so the first thing to verify is
+that the mod behaves identically with no viewer installed. Then install one
+viewer at a time and use its transfer button on a recipe the player cannot fully
+supply from their own inventory; the missing ingredients must come out of the
+surrounding containers.
+
+| Viewer | Version used for the 1.20.1 matrix |
+| --- | --- |
+| JEI | 15.49.0.194 |
+| REI | 12.1.785 |
+| EMI | 1.0.9+1.20.1 |
+
+EMI has no Chestwise-specific code. Its JEMI bridge can invoke the JEI handler,
+including for an EMI-native recipe, because the handler intentionally does not
+cast or inspect the recipe object. This remains a runtime test requirement, not
+a certification claim. REI ships no Forge build after 1.20.1, so there is
+nothing to test for Forge on 1.21.1 and 26.2.
 
 ## Release evidence
 

@@ -14,34 +14,23 @@ The design brief and the rules the art follows are recorded in
 model deliberately avoids the terminal language of Applied Energistics 2,
 Refined Storage, and Tom's Simple Storage.
 
-`art/gui_icons.png` and `art/mod_icon_draft_*.png` are drafts produced the same
-way by `art/generate_icons.py`. They are not shipped inside the jar: the
-terminal's buttons are still text, and the mod icon draft is a proposal that has
-not replaced `icon.png`.
-
 ## Project icon
 
-`src/main/resources/assets/chestwise/icon.png` is an original 256 × 256 raster
-asset generated for Chestwise on 2026-08-26 with OpenAI image generation. It
-was visually inspected at its original resolution before inclusion. It contains
-no text, third-party logo, or copied game UI.
+`src/main/resources/assets/chestwise/icon.png` is an original 256 x 256 asset
+authored for Chestwise, drawn as explicit rectangles by
+`art/generate_icons.py` and exported at 32 x 32 before a nearest-neighbour
+upscale, so every pixel stays hard-edged. It shows a catalogue card lifted out of
+a drawer rather than the whole block, which stays readable at the 32-64 px sizes
+used by mod lists and store pages. No image generator, photograph, or upscaler
+was involved, and it contains no text, third-party logo, or copied game UI.
 
-Final generation prompt:
+It replaced an earlier raster icon that had been produced with OpenAI image
+generation on 2026-08-26; that asset is no longer used or shipped.
 
-> Use case: stylized-concept. Asset type: Minecraft mod icon, readable at 32x32
-> and 128x128. Primary request: an original square icon representing Chestwise:
-> a warm wooden storage chest whose front has a small embedded vanilla-inspired
-> inventory search panel, suggesting that physical storage itself is searchable.
-> Subject: one centered wooden chest, simple brass latch, subtle small
-> magnifying-glass motif integrated into latch or panel. Style: polished
-> pixel-art game UI icon, blocky Minecraft-compatible but original, crisp hard
-> edges. Warm early-game palette: oak, charcoal, brass, and a tiny teal accent.
-> No text, cables, power, disks, sci-fi elements, logos, trademarked UI, or
-> watermark. Avoid direct imitation of Minecraft's chest, AE2, Refined Storage,
-> or Tom's Simple Storage.
-
-The generated working source was saved outside the repository at:
-
-```text
-C:\Users\felip\.codex\generated_images\01a03ae7-4191-7db3-9c59-54903bb3a7ed\exec-635f2511-2fc1-49d0-a67a-dbfddd59a5aa.png
-```
+`src/main/resources/assets/chestwise/textures/gui/terminal_icons.png` holds the
+terminal's five 16 x 16 glyphs (search, deposit, quick stack, restock, locate),
+authored by the same explicit-rectangle generator. The search glyph is currently
+used beside the search field. Deposit and quick stack retain text labels for
+clarity; restock has no action yet and locate is a middle-click interaction, so
+their glyphs are retained as unused visual vocabulary rather than represented as
+finished controls.
