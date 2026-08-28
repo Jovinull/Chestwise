@@ -19,11 +19,25 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.ContainerHelper;
+//? if <= 1.20.1 {
+import net.minecraft.nbt.CompoundTag;
+//?}
+/*? if > 1.20.1 && < 26.2 {*/
+/*import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.HolderLookup;
+*//*?}*/
+/*? if >= 26.2 {*/
+/*import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+*//*?}*/
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -33,10 +47,71 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
     private final Map<String, MinecraftStorageSource> sources = new LinkedHashMap<>();
     private int ticks;
     private int pollCursor;
+    /** Kept on the terminal so a half-built recipe survives closing the screen. */
+    private final NonNullList<ItemStack> craftingGrid = NonNullList.withSize(9, ItemStack.EMPTY);
+    /**
+     * The crafting result belongs to the shared grid too.  Keeping a result per
+     * menu leaves other viewers with stale output after somebody edits or crafts
+     * from the grid, which is both misleading and unsafe.
+     */
+    private final ResultContainer craftingResult = new ResultContainer();
 
     public StorageTerminalBlockEntity(BlockPos position, BlockState state) {
         super(ChestwiseContent.STORAGE_TERMINAL_ENTITY, position, state);
     }
+
+    public NonNullList<ItemStack> craftingGrid() {
+        return craftingGrid;
+    }
+
+    public ResultContainer craftingResult() {
+        return craftingResult;
+    }
+
+    //? if <= 1.20.1 {
+    @Override
+    protected void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
+        ContainerHelper.saveAllItems(tag, craftingGrid);
+    }
+
+    @Override
+    public void load(CompoundTag tag) {
+        super.load(tag);
+        craftingGrid.clear();
+        ContainerHelper.loadAllItems(tag, craftingGrid);
+    }
+    //?}
+
+    /*? if > 1.20.1 && < 26.2 {*/
+    /*@Override
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        ContainerHelper.saveAllItems(tag, craftingGrid, registries);
+    }
+
+    @Override
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        craftingGrid.clear();
+        ContainerHelper.loadAllItems(tag, craftingGrid, registries);
+    }
+    *//*?}*/
+
+    /*? if >= 26.2 {*/
+    /*@Override
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        ContainerHelper.saveAllItems(output, craftingGrid);
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        craftingGrid.clear();
+        ContainerHelper.loadAllItems(input, craftingGrid);
+    }
+    *//*?}*/
 
     public static void serverTick(
         net.minecraft.world.level.Level level,
@@ -121,6 +196,29 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
                     position.getZ() + 0.5
                 ))
                 .thenComparingLong(BlockPos::asLong));
+    }
+
+    /**
+     * Withdraws one stack of whichever of {@code itemIds} the storage actually
+     * holds. Recipe transfer uses this so a slot that accepts a tag is satisfied
+     * by any member of it, not only the variant the recipe screen happened to
+     * show.
+     */
+    public ItemStack withdrawAnyOf(List<String> itemIds, int requested) {
+        if (itemIds.isEmpty() || requested <= 0) {
+            return ItemStack.EMPTY;
+        }
+        for (IndexedItem candidate : index.snapshot()) {
+            ItemIdentity identity = candidate.descriptor().identity();
+            if (!itemIds.contains(identity.itemId())) {
+                continue;
+            }
+            ItemStack taken = withdraw(identity, requested);
+            if (!taken.isEmpty()) {
+                return taken;
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     public ItemStack withdraw(ItemIdentity identity, int requested) {

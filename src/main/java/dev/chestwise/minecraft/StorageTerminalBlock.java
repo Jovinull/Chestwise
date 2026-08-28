@@ -22,6 +22,12 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.core.NonNullList;
+import net.minecraft.world.Containers;
+import net.minecraft.world.item.ItemStack;
+/*? if >= 26.2 {*/
+/*import net.minecraft.server.level.ServerLevel;
+*//*?}*/
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -77,6 +83,50 @@ public final class StorageTerminalBlock extends BaseEntityBlock {
             case WEST -> SHAPE_WEST;
             default -> SHAPE_NORTH;
         };
+    }
+
+    //? if < 26.2 {
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onRemove(BlockState state, Level level, BlockPos position, BlockState newState, boolean isMoving) {
+        // The crafting grid lives on the block entity now, so it has to be
+        // scattered when the terminal is destroyed or it would be lost.
+        if (!state.is(newState.getBlock())) {
+            releaseCraftingGrid(level, position);
+        }
+        super.onRemove(state, level, position, newState, isMoving);
+    }
+    //?} else {
+    /*@Override
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos position, boolean movedByPiston) {
+        releaseCraftingGrid(level, position);
+        super.affectNeighborsAfterRemoval(state, level, position, movedByPiston);
+    }
+    *///?}
+
+    /**
+     * Puts the crafting grid back into the surrounding containers when the
+     * terminal is destroyed, and scatters only what would not fit. deposit()
+     * shrinks each stack in place, so nothing is duplicated or lost.
+     */
+    private static void releaseCraftingGrid(Level level, BlockPos position) {
+        if (level.isClientSide()
+            || !(level.getBlockEntity(position) instanceof StorageTerminalBlockEntity terminal)) {
+            return;
+        }
+        // Menus can survive until the server processes the block removal. Clear
+        // the shared output before moving inputs so no stale ResultSlot can be
+        // taken during that short window.
+        terminal.craftingResult().clearContent();
+        NonNullList<ItemStack> grid = terminal.craftingGrid();
+        for (ItemStack stack : grid) {
+            if (!stack.isEmpty()) {
+                terminal.deposit(stack, false);
+            }
+        }
+        Containers.dropContents(level, position, grid);
+        grid.clear();
+        terminal.setChanged();
     }
 
     @Override
