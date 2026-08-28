@@ -2,6 +2,7 @@ package dev.chestwise.fabric;
 
 //? if fabric {
 import dev.chestwise.core.IndexedItem;
+import dev.chestwise.core.RecipeSlotCodec;
 import dev.chestwise.core.SortMode;
 import dev.chestwise.minecraft.ChestwiseContent;
 import dev.chestwise.minecraft.StorageTerminalBlockEntity;
@@ -105,6 +106,238 @@ public final class ChestwiseGameTests implements FabricGameTest {
             "3x3 terminal grid did not resolve the vanilla crafting-table recipe");
         menu.removed(player);
         helper.succeed();
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void craftingGridSurvivesClosingAndIsSharedBetweenScreens(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        //? if < 26.2 {
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+
+        helper.runAfterDelay(5, () -> {
+            ServerPlayer player = helper.makeMockServerPlayerInLevel();
+            StorageTerminalMenu first = new StorageTerminalMenu(2, player.getInventory(), terminal);
+            first.getSlot(StorageTerminalMenu.CRAFT_START).set(new ItemStack(Items.BRICK, 4));
+            first.removed(player);
+
+            helper.assertTrue(terminal.craftingGrid().get(0).is(Items.BRICK),
+                "Closing the terminal discarded the crafting grid instead of leaving it on the block");
+
+            // A second screen must see the same stacks, not a private copy: two
+            // copies is what would let the grid be duplicated or overwritten.
+            StorageTerminalMenu second = new StorageTerminalMenu(3, player.getInventory(), terminal);
+            helper.assertTrue(second.getSlot(StorageTerminalMenu.CRAFT_START).getItem().is(Items.BRICK),
+                "Reopening the terminal did not restore the crafting grid");
+            second.getSlot(StorageTerminalMenu.CRAFT_START).set(ItemStack.EMPTY);
+            helper.assertTrue(terminal.craftingGrid().get(0).isEmpty(),
+                "The crafting grid is not shared with the block entity");
+            second.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 40)
+    //?} else {
+    /*@GameTest(maxTicks = 40)
+    *///?}
+    public void sharedCraftResultInvalidatesForEveryOpenMenu(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        //? if < 26.2 {
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        ServerPlayer firstPlayer = helper.makeMockServerPlayerInLevel();
+        ServerPlayer secondPlayer = helper.makeMockServerPlayerInLevel();
+        StorageTerminalMenu first = new StorageTerminalMenu(20, firstPlayer.getInventory(), terminal);
+        StorageTerminalMenu second = new StorageTerminalMenu(21, secondPlayer.getInventory(), terminal);
+
+        first.getSlot(StorageTerminalMenu.CRAFT_START).set(new ItemStack(Items.OAK_PLANKS));
+        first.getSlot(StorageTerminalMenu.CRAFT_START + 1).set(new ItemStack(Items.OAK_PLANKS));
+        first.getSlot(StorageTerminalMenu.CRAFT_START + 3).set(new ItemStack(Items.OAK_PLANKS));
+        first.getSlot(StorageTerminalMenu.CRAFT_START + 4).set(new ItemStack(Items.OAK_PLANKS));
+        helper.assertTrue(first.getSlot(StorageTerminalMenu.RESULT_SLOT).getItem().is(Items.CRAFTING_TABLE),
+            "First menu did not resolve the shared crafting result");
+        helper.assertTrue(second.getSlot(StorageTerminalMenu.RESULT_SLOT).getItem().is(Items.CRAFTING_TABLE),
+            "Second menu retained a private or stale crafting result");
+
+        first.getSlot(StorageTerminalMenu.CRAFT_START).set(ItemStack.EMPTY);
+        helper.assertTrue(second.getSlot(StorageTerminalMenu.RESULT_SLOT).getItem().isEmpty(),
+            "A second open menu retained a result after the shared grid became invalid");
+        first.removed(firstPlayer);
+        second.removed(secondPlayer);
+        helper.succeed();
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void breakingTheTerminalReturnsItsCraftingGridToStorage(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        terminal.craftingGrid().set(0, new ItemStack(Items.LAPIS_LAZULI, 7));
+
+        // 15 ticks: discovery has to have found the chest before deposit can
+        // reach it. Asserting sooner made this test flaky.
+        helper.runAfterDelay(15, () -> {
+            helper.destroyBlock(terminalPosition);
+            helper.runAfterDelay(5, () -> {
+                int stored = 0;
+                for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                    ItemStack candidate = chest.getItem(slot);
+                    if (candidate.is(Items.LAPIS_LAZULI)) {
+                        stored += candidate.getCount();
+                    }
+                }
+                helper.assertTrue(stored == 7,
+                    "Breaking the terminal did not move its crafting grid into storage; found " + stored);
+                helper.succeed();
+            });
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void recipeTransferTakesFromTheInventoryBeforeStorage(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.AMETHYST_SHARD, 5));
+
+        // 15 ticks: the chest must be both discovered and polled into the index
+        // before a withdrawal can find the redstone.
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = helper.makeMockServerPlayerInLevel();
+            BlockPos world = terminal.getBlockPos();
+            player.setPos(world.getX() + 0.5, world.getY() + 0.5, world.getZ() + 0.5);
+            player.getInventory().setItem(9, new ItemStack(Items.COPPER_INGOT, 3));
+            StorageTerminalMenu menu = new StorageTerminalMenu(4, player.getInventory(), terminal);
+
+            // Slot 0 is held by the player, slot 1 only by the chest.
+            menu.fillRecipe(player, RecipeSlotCodec.encode(List.of(
+                List.of("minecraft:copper_ingot"),
+                List.of("minecraft:amethyst_shard")
+            )));
+
+            helper.assertTrue(menu.getSlot(StorageTerminalMenu.CRAFT_START).getItem().is(Items.COPPER_INGOT),
+                "Recipe transfer did not take the ingredient held by the player");
+            helper.assertTrue(menu.getSlot(StorageTerminalMenu.CRAFT_START + 1).getItem().is(Items.AMETHYST_SHARD),
+                "Recipe transfer did not pull the missing ingredient out of storage");
+            helper.assertTrue(player.getInventory().getItem(9).getCount() == 2,
+                "Recipe transfer took more than one item from the player's inventory");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 40)
+    //?} else {
+    /*@GameTest(maxTicks = 40)
+    *///?}
+    public void recipeTransferNeverOverwritesAnUnreturnedGrid(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        //? if < 26.2 {
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        BlockPos terminalWorldPosition = terminal.getBlockPos();
+        player.setPos(terminalWorldPosition.getX() + 0.5, terminalWorldPosition.getY() + 0.5,
+            terminalWorldPosition.getZ() + 0.5);
+        player.getInventory().setItem(9, new ItemStack(Items.COPPER_INGOT));
+        StorageTerminalMenu menu = new StorageTerminalMenu(22, player.getInventory(), terminal);
+        menu.getSlot(StorageTerminalMenu.CRAFT_START).set(new ItemStack(Items.DRAGON_BREATH));
+
+        // No discovery tick has run, so the grid item has no valid destination.
+        // A transfer must leave it in place rather than overwriting it.
+        menu.fillRecipe(player, RecipeSlotCodec.encode(List.of(List.of("minecraft:copper_ingot"))));
+        helper.assertTrue(menu.getSlot(StorageTerminalMenu.CRAFT_START).getItem().is(Items.DRAGON_BREATH),
+            "Recipe transfer overwrote a grid item that storage could not accept");
+        helper.assertTrue(player.getInventory().getItem(9).is(Items.COPPER_INGOT),
+            "Recipe transfer consumed an ingredient after failing to clear the grid");
+        menu.removed(player);
+        helper.succeed();
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void displayClickDepositsCarriedStacksAndIgnoresQuickCraft(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = helper.makeMockServerPlayerInLevel();
+            BlockPos terminalWorldPosition = terminal.getBlockPos();
+            player.setPos(terminalWorldPosition.getX() + 0.5, terminalWorldPosition.getY() + 0.5,
+                terminalWorldPosition.getZ() + 0.5);
+            StorageTerminalMenu menu = new StorageTerminalMenu(23, player.getInventory(), terminal);
+            menu.setCarried(new ItemStack(Items.GLOWSTONE_DUST, 3));
+            //? if < 26.2 {
+            menu.clicked(0, 0, ClickType.PICKUP, player);
+            //?} else {
+            /*menu.clicked(0, 0, ContainerInput.PICKUP, player);
+            *///?}
+            helper.assertTrue(menu.getCarried().isEmpty(), "Clicking a display slot did not deposit the carried stack");
+            helper.assertTrue(terminal.search("glowstone dust", SortMode.REGISTRY).stream()
+                    .anyMatch(item -> item.descriptor().identity().itemId().equals("minecraft:glowstone_dust")
+                        && item.totalCount() == 3),
+                "Carried-stack deposit did not reach terminal storage");
+
+            menu.setCarried(new ItemStack(Items.GLOWSTONE_DUST, 2));
+            //? if < 26.2 {
+            menu.clicked(0, 0, ClickType.QUICK_CRAFT, player);
+            //?} else {
+            /*menu.clicked(0, 0, ContainerInput.QUICK_CRAFT, player);
+            *///?}
+            helper.assertTrue(menu.getCarried().getCount() == 2,
+                "Quick-craft over a display slot changed the carried stack");
+            menu.removed(player);
+            helper.succeed();
+        });
     }
 
     //? if < 26.2 {
