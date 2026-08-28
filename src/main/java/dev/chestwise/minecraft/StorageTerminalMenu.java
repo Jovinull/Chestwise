@@ -2,6 +2,7 @@ package dev.chestwise.minecraft;
 
 import dev.chestwise.core.IndexedItem;
 import dev.chestwise.core.ItemIdentity;
+import dev.chestwise.core.RecipeSlotCodec;
 import dev.chestwise.core.SortMode;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -33,6 +34,7 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
     public static final int ROWS = 5;
     public static final int DISPLAY_SLOTS = COLUMNS * ROWS;
     public static final int PLAYER_STORAGE_SLOTS = 36;
+    public static final int RECIPE_SLOTS = RecipeSlotCodec.SLOTS;
     public static final int CRAFT_START = DISPLAY_SLOTS;
     public static final int CRAFT_END = CRAFT_START + 9;
     public static final int RESULT_SLOT = CRAFT_END;
@@ -50,8 +52,8 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
     private final long[] displayCounts = new long[DISPLAY_SLOTS];
     private final List<ItemIdentity> identities = new ArrayList<>(DISPLAY_SLOTS);
     private final Set<Integer> protectedSlots = new HashSet<>();
-    private final TransientCraftingContainer crafting = new TransientCraftingContainer(this, 3, 3);
-    private final ResultContainer craftingResult = new ResultContainer();
+    private final net.minecraft.world.inventory.CraftingContainer crafting;
+    private final ResultContainer craftingResult;
     private final StorageTerminalBlockEntity terminal;
     private final Player menuPlayer;
     private String query = "";
@@ -67,6 +69,14 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         super(ChestwiseContent.STORAGE_TERMINAL_MENU, containerId);
         this.terminal = terminal;
         this.menuPlayer = inventory.player;
+        // Server side the grid lives on the block so every screen shares it; the
+        // client menu has no block entity and only mirrors what the server sends.
+        this.crafting = terminal != null
+            ? new TerminalCraftingContainer(this, terminal)
+            : new TransientCraftingContainer(this, 3, 3);
+        // The output must be shared with the block-backed grid as well.  A
+        // transient client menu still needs its own mirror container.
+        this.craftingResult = terminal != null ? terminal.craftingResult() : new ResultContainer();
         for (int slot = 0; slot < DISPLAY_SLOTS; slot++) {
             identities.add(null);
             addSlot(new Slot(display, slot, 8 + slot % COLUMNS * 18, 32 + slot / COLUMNS * 18) {
@@ -80,15 +90,20 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         addPlayerSlots(inventory);
         addSynchronization();
         refresh();
+        // Opening a second menu must immediately resolve the output already on
+        // the shared grid, rather than waiting for that player to edit a slot.
+        slotsChanged(crafting);
     }
 
     private void addCraftingSlots(Player player) {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 3; column++) {
-                addSlot(new Slot(crafting, column + row * 3, 184 + column * 18, 142 + row * 18));
+                addSlot(new Slot(crafting, column + row * 3, 181 + column * 18, 32 + row * 18));
             }
         }
-        addSlot(new ResultSlot(player, crafting, craftingResult, 0, 220, 160));
+        // The result must not share a cell with an input: 184+2*18 / 142+1*18
+        // put it exactly on top of the middle-right input slot.
+        addSlot(new ResultSlot(player, crafting, craftingResult, 0, 199, 100));
     }
 
     private void addSynchronization() {
@@ -222,6 +237,18 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         Player player
     ) {
         if (terminal != null && slotId >= 0 && slotId < DISPLAY_SLOTS) {
+            // Vanilla's drag-to-distribute carries its stage in `button`, which
+            // withdraw() would misread as a mouse button. A virtual grid has
+            // nothing to distribute across, so ignore it outright.
+            if (isQuickCraft(clickType)) {
+                return;
+            }
+            // Dropping a held stack onto the grid has to store it. Without this
+            // the only way in was a shift-click.
+            if (!getCarried().isEmpty() && isPickup(clickType) && (button == 0 || button == 1)) {
+                depositCarried(player, button == 1);
+                return;
+            }
             withdraw(slotId, button, clickType, player);
             return;
         }
@@ -417,9 +444,15 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
-        craftingResult.clearContent();
+        if (terminal == null) {
+            craftingResult.clearContent();
+        }
         if (!isClientSide(player)) {
-            clearContainer(player, crafting);
+            // The grid lives on the terminal, so there is nothing to hand back.
+            // Only a client-side menu without a block entity owns its own items.
+            if (terminal == null) {
+                clearContainer(player, crafting);
+            }
         }
     }
 
@@ -473,6 +506,27 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         }
     }
 
+    /** Stores the stack on the cursor: the whole thing, or one item at a time. */
+    private void depositCarried(Player player, boolean single) {
+        ItemStack carried = getCarried();
+        if (carried.isEmpty() || !terminal.canUse(player)) {
+            return;
+        }
+        if (single) {
+            ItemStack one = carried.copy();
+            one.setCount(1);
+            terminal.deposit(one, false);
+            if (one.isEmpty()) {
+                carried.shrink(1);
+                setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
+            }
+        } else {
+            terminal.deposit(carried, false);
+            setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
+        }
+        refresh();
+    }
+
     private void scrollDeposit(Player player, int displaySlot) {
         ItemIdentity identity = identities.get(displaySlot);
         ItemStack shown = display.getItem(displaySlot);
@@ -498,6 +552,80 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             inventory.setChanged();
             return;
         }
+    }
+
+    /**
+     * Fills the crafting grid for a recipe, taking from the player's inventory
+     * first and only then from the surrounding containers.
+     *
+     * <p>{@code encoded} is slot-major: nine {@code ';'}-separated groups, each a
+     * {@code ','}-separated list of item ids the slot accepts. Sending the
+     * acceptable ids rather than a recipe id keeps this free of the recipe API,
+     * which is shaped differently on every Minecraft generation, and still lets a
+     * tag ingredient be satisfied by any member the player actually owns.
+     */
+    public void fillRecipe(Player player, String encoded) {
+        if (terminal == null || isClientSide(player) || !terminal.canUse(player)) {
+            return;
+        }
+        List<List<String>> wanted = RecipeSlotCodec.decode(encoded);
+        // Clear first so transferring twice cannot pile ingredients up.
+        // Never overwrite a grid stack that could not be returned.  Keeping the
+        // existing grid intact is preferable to a partial recipe and, crucially,
+        // makes a full or incompatible storage network lossless.
+        if (!returnGridToStorage()) {
+            return;
+        }
+        for (int slot = 0; slot < RECIPE_SLOTS && slot < wanted.size(); slot++) {
+            List<String> options = wanted.get(slot);
+            if (options.isEmpty()) {
+                continue;
+            }
+            ItemStack found = takeOneFromInventory(player, options);
+            if (found.isEmpty()) {
+                found = terminal.withdrawAnyOf(options, 1);
+            }
+            if (!found.isEmpty()) {
+                crafting.setItem(slot, found);
+            }
+        }
+        player.getInventory().setChanged();
+        slotsChanged(crafting);
+        refresh();
+    }
+
+    /** Moves anything already on the grid back into storage, without discarding a remainder. */
+    private boolean returnGridToStorage() {
+        for (int slot = 0; slot < crafting.getContainerSize(); slot++) {
+            ItemStack existing = crafting.getItem(slot);
+            if (existing.isEmpty()) {
+                continue;
+            }
+            terminal.deposit(existing, false);
+            crafting.setItem(slot, existing.isEmpty() ? ItemStack.EMPTY : existing);
+            if (!existing.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private ItemStack takeOneFromInventory(Player player, List<String> options) {
+        Inventory inventory = player.getInventory();
+        int limit = Math.min(PLAYER_STORAGE_SLOTS, inventory.getContainerSize());
+        for (int slot = 0; slot < limit; slot++) {
+            if (protectedSlots.contains(slot)) {
+                continue;
+            }
+            ItemStack candidate = inventory.getItem(slot);
+            if (candidate.isEmpty()) {
+                continue;
+            }
+            if (options.contains(ItemStackIdentity.identity(candidate).itemId())) {
+                return candidate.split(1);
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     private void depositInventory(Player player, boolean matchingOnly) {
@@ -567,6 +695,20 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         return input == ClickType.PICKUP;
         //?} else {
         /*return input == ContainerInput.PICKUP;
+        *///?}
+    }
+
+    private static boolean isQuickCraft(
+        //? if < 26.2 {
+        ClickType input
+        //?} else {
+        /*ContainerInput input
+        *///?}
+    ) {
+        //? if < 26.2 {
+        return input == ClickType.QUICK_CRAFT;
+        //?} else {
+        /*return input == ContainerInput.QUICK_CRAFT;
         *///?}
     }
 
