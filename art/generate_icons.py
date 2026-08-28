@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Draft the Chestwise mod icon and the terminal's GUI iconography.
 
-These are design proposals kept in `art/`. Nothing in the mod loads them yet:
-the terminal's buttons are still text, so shipping the sheet inside the jar
-would add weight with no consumer. Wire them up when the GUI moves to icon
-buttons, then move the sheet under `assets/chestwise/textures/gui/`.
+The sheet is copied to `assets/chestwise/textures/gui/terminal_icons.png` and
+indexed left to right. Only the glyphs with a control behind them are drawn; the
+terminal has no restock button and locating is a middle-click, so those two stay
+here until the actions exist. The mod icon is written straight to
+`assets/chestwise/icon.png`.
 
     python art/generate_icons.py
 """
@@ -17,7 +18,9 @@ from PIL import Image, ImageDraw
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "art"
+ASSETS = ROOT / "src" / "main" / "resources" / "assets" / "chestwise"
+GUI_SHEET = ASSETS / "textures" / "gui" / "terminal_icons.png"
+MOD_ICON = ASSETS / "icon.png"
 
 # Shared with the block textures so the family reads as one mod.
 WOOD_DEEP = (46, 32, 25)
@@ -214,17 +217,17 @@ def build_mod_icon() -> Image.Image:
 
 
 def main() -> int:
-    OUTPUT.mkdir(parents=True, exist_ok=True)
-
+    GUI_SHEET.parent.mkdir(parents=True, exist_ok=True)
     sheet = build_gui_sheet()
-    sheet.save(OUTPUT / "gui_icons.png")
-    sheet.resize((sheet.width * 8, sheet.height * 8), Image.NEAREST).save(OUTPUT / "gui_icons_preview.png")
-    print(f"wrote art/gui_icons.png ({', '.join(name for name, _ in GUI_ICONS)})")
+    sheet.save(GUI_SHEET)
+    sheet.resize((sheet.width * 8, sheet.height * 8), Image.NEAREST).save(ROOT / "art" / "_preview_gui_icons.png")
+    print(f"wrote {GUI_SHEET.relative_to(ROOT)} ({', '.join(name for name, _ in GUI_ICONS)})")
 
+    # 32 px is the drawing size; the shipped icon is a nearest-neighbour upscale
+    # so the pixels stay hard-edged at the 256 px the launchers expect.
     icon = build_mod_icon()
-    icon.save(OUTPUT / "mod_icon_draft_32.png")
-    icon.resize((256, 256), Image.NEAREST).save(OUTPUT / "mod_icon_draft_256.png")
-    print("wrote art/mod_icon_draft_32.png and art/mod_icon_draft_256.png")
+    icon.resize((256, 256), Image.NEAREST).save(MOD_ICON)
+    print(f"wrote {MOD_ICON.relative_to(ROOT)}")
     return 0
 
 
