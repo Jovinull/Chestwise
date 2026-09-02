@@ -49,11 +49,11 @@ dependencies {
         // that those loaders use to discover the plugin.
         "neoforge" -> {
             compileOnly("me.shedaniel:RoughlyEnoughItems-api-neoforge:$chestwiseRei")
-            compileOnly("net.fabricmc:fabric-loader:0.16.9")
+            compileOnly("net.fabricmc:fabric-loader:0.19.5")
         }
         "forge" -> if (chestwiseMinecraft == "1.20.1") {
             compileOnly("me.shedaniel:RoughlyEnoughItems-api-forge:$chestwiseRei")
-            compileOnly("net.fabricmc:fabric-loader:0.16.9")
+            compileOnly("net.fabricmc:fabric-loader:0.19.5")
         }
     }
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
