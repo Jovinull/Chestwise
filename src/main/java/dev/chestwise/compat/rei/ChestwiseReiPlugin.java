@@ -22,8 +22,8 @@ import net.minecraft.world.item.ItemStack;
  * JEI plugin reads, so the JEI plugin already serves EMI. REI ships no such
  * bridge, hence this class.
  *
- * <p>REI publishes no Forge build after 1.20.1, so this file is compiled out for
- * those nodes rather than pretending the API is there.
+ * <p>Chestwise currently compiles this plugin for Forge only on 1.20.1. The
+ * later Forge nodes deliberately guard it out and omit the API dependency.
  */
 //? if !fabric {
 /*@me.shedaniel.rei.forge.REIPluginClient

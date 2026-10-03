@@ -1,7 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "[65,)"
 license = "MIT"
-issueTrackerURL = "https://github.com/chestwise/chestwise/issues"
+issueTrackerURL = "https://github.com/Jovinull/Chestwise/issues"
 
 [[mods]]
 modId = "chestwise"

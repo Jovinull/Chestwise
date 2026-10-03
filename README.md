@@ -10,15 +10,17 @@ storage.
 
 ## Supported platforms
 
-| Minecraft | Fabric | Quilt | Forge | NeoForge |
+| Minecraft | Fabric | Quilt server smoke | Forge | NeoForge |
 | --- | --- | --- | --- | --- |
-| 1.20.1 | yes | tested Fabric build | yes | yes |
-| 1.21.1 | yes | tested Fabric build | yes | yes |
-| 26.2 | yes | tested Fabric build | yes | yes |
+| 1.20.1 | yes | pass (0.30.0) | yes | yes |
+| 1.21.1 | yes | pass (0.30.0) | yes | yes |
+| 26.2 | yes | pass (0.30.0) | yes | yes |
 
 Fabric builds require Fabric API. Quilt uses the same Fabric artifact with
-Fabric API; QSL and QFAPI are not required. Forge and NeoForge builds have no
-runtime library dependency.
+Fabric API; QSL and QFAPI are not required. The Quilt evidence is dedicated-
+server startup only; client rendering and terminal-screen behavior have not
+been certified on Quilt. Forge and NeoForge builds have no runtime library
+dependency.
 
 ## Features
 

@@ -10,9 +10,10 @@ Stonecutter with Architectury Loom and supports Fabric, Forge, NeoForge,
 Mojmap, the unobfuscated 26.x line, and Java 17/21/25. These are build-time
 tools only. Chestwise does not require Architectury API at runtime.
 
-One preprocessed source tree produces nine real loader/version nodes. Quilt is
-validated by booting each Fabric artifact with Quilt Loader; Quilt is not a
-tenth source fork.
+One preprocessed source tree produces nine real loader/version nodes. Quilt
+server compatibility is smoke-tested by booting each Fabric artifact with
+Quilt Loader; client compatibility remains separately unverified. Quilt is
+not a tenth source fork.
 
 Business code owns its abstractions (`StorageSource`, `StorageView`,
 `StorageSlot`, `StorageAdapter`, and `StorageDiscovery`). Loader APIs are only
@@ -43,4 +44,3 @@ inside setup), while the official Forge 26.2 MDK uses ForgeGradle 7. That cell
 is an equally small ForgeGradle subproject following the official MDK.
 
 Support remains provisional until each built jar boots under its target loader.
-

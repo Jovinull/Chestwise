@@ -6,8 +6,8 @@
   "description": "${description}",
   "authors": ["Chestwise contributors"],
   "contact": {
-    "sources": "https://github.com/chestwise/chestwise",
-    "issues": "https://github.com/chestwise/chestwise/issues"
+    "sources": "https://github.com/Jovinull/Chestwise",
+    "issues": "https://github.com/Jovinull/Chestwise/issues"
   },
   "license": "MIT",
   "icon": "assets/chestwise/icon.png",
@@ -15,6 +15,7 @@
   "entrypoints": {
     "main": ["dev.chestwise.Chestwise"],
     "client": ["dev.chestwise.fabric.ChestwiseFabricClient"],
+    "jei_mod_plugin": ["dev.chestwise.compat.jei.ChestwiseJeiPlugin"],
     "fabric-gametest": ["dev.chestwise.fabric.ChestwiseGameTests"],
     "rei_client": ["dev.chestwise.compat.rei.ChestwiseReiPlugin"]
   },

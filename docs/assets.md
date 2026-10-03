@@ -27,10 +27,7 @@ was involved, and it contains no text, third-party logo, or copied game UI.
 It replaced an earlier raster icon that had been produced with OpenAI image
 generation on 2026-08-26; that asset is no longer used or shipped.
 
-`src/main/resources/assets/chestwise/textures/gui/terminal_icons.png` holds the
-terminal's five 16 x 16 glyphs (search, deposit, quick stack, restock, locate),
-authored by the same explicit-rectangle generator. The search glyph is currently
-used beside the search field. Deposit and quick stack retain text labels for
-clarity; restock has no action yet and locate is a middle-click interaction, so
-their glyphs are retained as unused visual vocabulary rather than represented as
-finished controls.
+`src/main/resources/assets/chestwise/textures/gui/terminal_icons.png` contains
+the single 16 x 16 search glyph used beside the search field. It is authored by
+the same explicit-rectangle generator. No unused GUI glyphs ship in the runtime
+artifact.

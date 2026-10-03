@@ -30,20 +30,21 @@ grid is filled from the player's inventory first and topped up from the
 surrounding containers, so a recipe transfers even when the ingredients are only
 in the chests.
 
-| Viewer | Coverage | How |
-| --- | --- | --- |
-| JEI | compiled on every supported loader and Minecraft version; runtime certification pending viewer smoke tests | `IRecipeTransferHandler` |
-| EMI | experimental: JEMI may reuse the JEI handler, but EMI-native recipes require explicit runtime validation | no EMI-specific plugin |
-| REI | compiled for Fabric on every line; NeoForge on 1.21.1 and 26.2; Forge on 1.20.1; runtime certification pending viewer smoke tests | `TransferHandler` |
+| Viewer | Compile coverage | Runtime startup | Functional transfer | Integration path |
+| --- | --- | --- | --- | --- |
+| JEI | All nine loader/version nodes | 1.21.1 Fabric, JEI 19.44.0.406: PASS | 1.21.1 Fabric: vanilla oak-log-to-oak-planks transfer and craft PASS; edge cases not certified. Other nodes compile-tested only. | JEI `IRecipeTransferHandler`; Fabric discovers it through `jei_mod_plugin`. |
+| EMI | No EMI API/plugin is compiled | 1.21.1 Fabric, EMI 1.1.23+1.21.1+fabric + JEI 19.44.0.406: PASS | Oak-log-to-planks transfer/craft PASS; occupied grid returned and replaced; diamond-pickaxe transfer with missing ingredients left grid/storage unchanged. Remainders/full-capacity not tested. | Indirect JEMI/JEI compatibility (`dev.emi.emi.jemi.JemiPlugin`); no native Chestwise EMI plugin. |
+| REI | Fabric 1.20.1/1.21.1/26.2; Forge 1.20.1; NeoForge 1.20.1/1.21.1/26.2. | Not runtime-tested | Not runtime-tested; compile-tested only | REI `TransferHandler`. |
 
-REI publishes no Forge build after 1.20.1, so the REI plugin is compiled out for
-Forge on 1.21.1 and 26.2. That is an upstream gap, not a deliberate limitation,
-and it is the only place where the nine build variants differ in behaviour.
+Chestwise does not compile its REI handler for Forge 1.21.1 or 26.2. Those
+combinations are unsupported by this integration matrix; do not infer support
+from REI's general project-page loader list.
 
 JEI and REI are compile-only dependencies. None is bundled or required;
 Chestwise behaves identically with no recipe viewer installed. EMI is neither
-bundled nor declared as a dependency. Its JEMI bridge is an upstream feature and
-is not a substitute for testing EMI itself.
+bundled nor declared as a dependency. The tested EMI recipe transfer ran
+through EMI's upstream JEMI bridge into Chestwise's JEI transfer handler; this
+does not imply a native EMI plugin.
 
 The handlers deliberately read their ingredients from the viewer's slot view
 rather than from the recipe object, and send the acceptable item ids for each
@@ -53,6 +54,34 @@ player actually owns. The trade-off is deliberate: recipes whose input depends
 on NBT/data components, a required stack count, or a non-item ingredient cannot
 be represented faithfully and must not be advertised as supported transfer
 targets.
+
+## Recipe-transfer authority and fidelity
+
+Recipe transfer is an inventory-placement intent, not a client-authorized craft.
+The packet contains at most nine bounded lists of acceptable item identifiers;
+the server validates the open terminal menu, player reach, loaded storage
+sources, protected slots, and every withdrawal or deposit. It never accepts an
+output stack, a recipe result, or a client-computed crafting result. A malformed
+or unknown identifier is a no-op. A client can request an arbitrary *existing*
+item identifier, but that grants no capability beyond manually withdrawing that
+same item through the already-authorized terminal and placing it into its own
+crafting grid.
+
+Recipe identifiers are intentionally not the wire protocol. Viewer APIs do not
+provide a stable identifier for every displayed recipe (in particular,
+EMI-native recipes), and an identifier alone loses the useful choice among tag
+members. The cost is fidelity: viewer transfer supports plain item and tag-like
+item alternatives only. It does not support NBT/component predicates, exact
+input counts greater than one, or non-item ingredients. This limitation applies
+to viewer transfer only; normal terminal crafting is resolved server-side by
+Minecraft's `RecipeManager` and retains vanilla ingredient semantics.
+
+The tested EMI+JEI development client displayed EMI's warning counter and its
+log recorded duplicate `jei:/...` recipe-ID errors during reload. No
+`ClassCastException`, linkage error, or Chestwise exception occurred, and the
+tested transfers above completed. Treat this as a runtime warning of the tested
+EMI/JEMI/JEI combination, not as certification that every imported recipe is
+unique.
 
 Chestwise never opens item-contained inventories recursively, force-loads a
 chunk, accesses another dimension, or treats player backpacks as terminal
