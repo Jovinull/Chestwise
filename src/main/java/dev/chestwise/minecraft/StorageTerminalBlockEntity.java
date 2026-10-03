@@ -22,6 +22,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.Containers;
 //? if <= 1.20.1 {
 import net.minecraft.nbt.CompoundTag;
 //?}
@@ -68,6 +69,41 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
         return craftingResult;
     }
 
+    /** Clears contents without changing the fixed nine-slot grid's size. */
+    private void clearCraftingGrid() {
+        for (int slot = 0; slot < craftingGrid.size(); slot++) {
+            craftingGrid.set(slot, ItemStack.EMPTY);
+        }
+    }
+
+    /**
+     * Returns the shared inputs to physical storage (or the world) exactly once
+     * before this block entity is removed. The result is cleared first so an
+     * open menu cannot take a stale craft output during removal.
+     */
+    void releaseCraftingGrid() {
+        if (level == null || level.isClientSide()) {
+            return;
+        }
+        craftingResult.clearContent();
+        for (ItemStack stack : craftingGrid) {
+            if (!stack.isEmpty()) {
+                deposit(stack, false);
+            }
+        }
+        Containers.dropContents(level, worldPosition, craftingGrid);
+        clearCraftingGrid();
+        setChanged();
+    }
+
+    /*? if >= 26.2 {*/
+    /*@Override
+    public void preRemoveSideEffects(BlockPos position, BlockState state) {
+        releaseCraftingGrid();
+        super.preRemoveSideEffects(position, state);
+    }
+    *//*?}*/
+
     //? if <= 1.20.1 {
     @Override
     protected void saveAdditional(CompoundTag tag) {
@@ -78,7 +114,7 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
-        craftingGrid.clear();
+        clearCraftingGrid();
         ContainerHelper.loadAllItems(tag, craftingGrid);
     }
     //?}
@@ -93,7 +129,7 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        craftingGrid.clear();
+        clearCraftingGrid();
         ContainerHelper.loadAllItems(tag, craftingGrid, registries);
     }
     *//*?}*/
@@ -108,7 +144,7 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        craftingGrid.clear();
+        clearCraftingGrid();
         ContainerHelper.loadAllItems(input, craftingGrid);
     }
     *//*?}*/

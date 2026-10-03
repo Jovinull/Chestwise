@@ -243,6 +243,12 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             if (isQuickCraft(clickType)) {
                 return;
             }
+            // Virtual display slots only implement ordinary pickup and
+            // quick-move. In particular, vanilla's double-click PICKUP_ALL
+            // must not be interpreted as another withdrawal from this slot.
+            if (!isPickup(clickType) && !isQuickMove(clickType)) {
+                return;
+            }
             // Dropping a held stack onto the grid has to store it. Without this
             // the only way in was a shift-click.
             if (!getCarried().isEmpty() && isPickup(clickType) && (button == 0 || button == 1)) {

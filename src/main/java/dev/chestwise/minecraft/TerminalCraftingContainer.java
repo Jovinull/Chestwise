@@ -119,7 +119,10 @@ final class TerminalCraftingContainer implements CraftingContainer {
 
     @Override
     public void clearContent() {
-        items().clear();
+        NonNullList<ItemStack> items = items();
+        for (int slot = 0; slot < items.size(); slot++) {
+            items.set(slot, ItemStack.EMPTY);
+        }
         setChanged();
     }
 
