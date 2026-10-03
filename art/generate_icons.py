@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Draft the Chestwise mod icon and the terminal's GUI iconography.
+"""Draw the Chestwise mod icon and the terminal's active GUI icon.
 
 The sheet is copied to `assets/chestwise/textures/gui/terminal_icons.png` and
-indexed left to right. Only the glyphs with a control behind them are drawn; the
-terminal has no restock button and locating is a middle-click, so those two stay
-here until the actions exist. The mod icon is written straight to
+and contains only the search glyph currently rendered by the terminal. The mod
+icon is written straight to
 `assets/chestwise/icon.png`.
 
     python art/generate_icons.py
@@ -67,88 +66,8 @@ SEARCH = [
     "................",
 ]
 
-DEPOSIT = [
-    "................",
-    "................",
-    ".......CC.......",
-    ".......CC.......",
-    ".......CC.......",
-    "....CCCCCCCC....",
-    ".....CCCCCC.....",
-    "......CCCC......",
-    ".......CC.......",
-    "................",
-    "..I..........I..",
-    "..I..........I..",
-    "..I..........I..",
-    "..IIIIIIIIIIII..",
-    "................",
-    "................",
-]
-
-QUICK_STACK = [
-    "................",
-    "................",
-    "................",
-    "................",
-    "..PPPPP.........",
-    "..PPPPP.........",
-    "............C...",
-    "..PPPPP......CC.",
-    "..PPPPP..CCCCCC.",
-    ".............CC.",
-    "..PPPPP.....C...",
-    "..PPPPP.........",
-    "................",
-    "................",
-    "................",
-    "................",
-]
-
-RESTOCK = [
-    "................",
-    "................",
-    ".......CC.......",
-    "......CCCC......",
-    ".....CCCCCC.....",
-    "....CCCCCCCC....",
-    ".......CC.......",
-    ".......CC.......",
-    "................",
-    "..IIIIIIIIIIII..",
-    "..I..........I..",
-    "..I..........I..",
-    "..I..........I..",
-    "..IIIIIIIIIIII..",
-    "................",
-    "................",
-]
-
-LOCATE = [
-    "................",
-    "................",
-    ".....IIIII......",
-    "....I.....I.....",
-    "...I..CCC..I....",
-    "...I..CCC..I....",
-    "...I..CCC..I....",
-    "....I.....I.....",
-    ".....I...I......",
-    "......I.I.......",
-    ".......I........",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-]
-
 GUI_ICONS = [
     ("search", SEARCH),
-    ("deposit", DEPOSIT),
-    ("quick_stack", QUICK_STACK),
-    ("restock", RESTOCK),
-    ("locate", LOCATE),
 ]
 
 

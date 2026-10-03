@@ -30,14 +30,14 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     /** GLFW escape key. A focused search box reports canConsumeInput() for every
      *  key, which swallowed the close and left the mouse as the only way out. */
     private static final int KEY_ESCAPE = 256;
-    /** Five 16x16 glyphs in a row: search, deposit, quick stack, restock, locate. */
+    /** The one active 16x16 search glyph. */
     //? if < 26.2 {
     private static final net.minecraft.resources.ResourceLocation ICONS =
     //?} else {
     /*private static final net.minecraft.resources.Identifier ICONS =
     *///?}
         dev.chestwise.minecraft.ChestwiseContent.id("textures/gui/terminal_icons.png");
-    private static final int ICON_SHEET_WIDTH = 80;
+    private static final int ICON_SHEET_WIDTH = 16;
     private static final int ICON_SIZE = 16;
     private static final int ICON_SEARCH = 0;
 
@@ -368,6 +368,7 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     //? if < 26.2 {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode != KEY_ESCAPE
+            && !minecraft.options.keyInventory.matches(keyCode, scanCode)
             && (search.keyPressed(keyCode, scanCode, modifiers) || search.canConsumeInput())) {
             return true;
         }
@@ -375,7 +376,9 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     }
     //?} else {
     /*public boolean keyPressed(KeyEvent event) {
-        if (event.key() != KEY_ESCAPE && (search.keyPressed(event) || search.canConsumeInput())) {
+        if (event.key() != KEY_ESCAPE
+            && !minecraft.options.keyInventory.matches(event)
+            && (search.keyPressed(event) || search.canConsumeInput())) {
             return true;
         }
         return super.keyPressed(event);
