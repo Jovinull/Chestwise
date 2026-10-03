@@ -34,8 +34,8 @@ dependencies {
     // JEI is compileOnly on purpose: Chestwise must load and work with JEI absent,
     // and the plugin class is only touched once JEI itself scans for @JeiPlugin.
     compileOnly("mezz.jei:jei-$chestwiseMinecraft-common-api:$chestwiseJei")
-    // REI ships no Forge build past 1.20.1, so those nodes compile without it and
-    // the plugin source is guarded out for them.
+    // Chestwise currently compiles the REI plugin for Forge only on 1.20.1;
+    // later Forge nodes omit its API dependency and guard the plugin source out.
     // Mapping differs by artifact: the Forge-family jars are Mojang-mapped, and so
     // is the loader-agnostic one from 26.2 onwards, but the Fabric jars on the
     // older lines are intermediary and have to go through Loom's remapping.
@@ -132,6 +132,21 @@ tasks.processResources {
 
 tasks.named<JavaCompile>("compileTestJava").configure {
     tasks.findByName("generatePackMCMetaJson")?.let { generated -> dependsOn(generated) }
+}
+
+// Fabric discovers GameTests through a development-only entrypoint. Keep that
+// class and entrypoint available to Loom's game-test runs, but do not ship test
+// code or an entrypoint referring to it in the release artifact.
+if (chestwiseLoader == "fabric") {
+    tasks.named<Jar>("jar").configure {
+        exclude("dev/chestwise/fabric/ChestwiseGameTests.class")
+        exclude("dev/chestwise/fabric/ChestwiseGameTests$*.class")
+        filesMatching("fabric.mod.json") {
+            filter { line: String ->
+                if (line.contains("\"fabric-gametest\"")) null else line
+            }
+        }
+    }
 }
 
 modSettings {

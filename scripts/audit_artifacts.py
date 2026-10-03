@@ -52,6 +52,14 @@ COMMON_ENTRIES = {
     "pack.mcmeta",
 }
 
+FORBIDDEN_PREFIXES = (
+    "mezz/jei/",
+    "dev/emi/",
+    "me/shedaniel/",
+)
+
+FORBIDDEN_SUFFIXES = (".java", ".kt", ".bbmodel")
+
 
 def fail(message: str) -> None:
     raise ValueError(message)
@@ -76,6 +84,20 @@ def validate(artifact: Artifact) -> str:
         if present_wrong:
             fail(f"{path.name}: cross-loader metadata {sorted(present_wrong)}")
 
+        forbidden = [
+            name for name in names
+            if name.startswith(FORBIDDEN_PREFIXES)
+            or name.startswith("net/fabricmc/")
+            or name.endswith(FORBIDDEN_SUFFIXES)
+            or "/test/" in name
+            or name.startswith("test/")
+            or "ChestwiseGameTests" in name
+            or name.endswith("Test.class")
+            or name.endswith("Tests.class")
+        ]
+        if forbidden:
+            fail(f"{path.name}: ships forbidden development or third-party entries {forbidden[:5]}")
+
         modern = artifact.minecraft != "1.20.1"
         recipe = f"data/chestwise/{'recipe' if modern else 'recipes'}/storage_terminal.json"
         loot = f"data/chestwise/{'loot_table' if modern else 'loot_tables'}/blocks/storage_terminal.json"
@@ -98,12 +120,33 @@ def validate(artifact: Artifact) -> str:
             metadata = json.loads(metadata_text)
             if metadata.get("id") != "chestwise" or metadata.get("icon") != "assets/chestwise/icon.png":
                 fail(f"{path.name}: invalid Fabric identity or icon")
+            if metadata.get("name") != "Chestwise" or metadata.get("version") != "0.1.0":
+                fail(f"{path.name}: invalid Fabric project name or version")
             if metadata.get("depends", {}).get("minecraft") != artifact.minecraft:
                 fail(f"{path.name}: invalid Fabric Minecraft constraint")
+            if not metadata.get("depends", {}).get("fabricloader"):
+                fail(f"{path.name}: missing Fabric Loader dependency")
+            if metadata.get("license") != "MIT":
+                fail(f"{path.name}: invalid Fabric license")
+            entrypoints = metadata.get("entrypoints", {})
+            if "fabric-gametest" in entrypoints or any("gametest" in name.casefold() for name in entrypoints):
+                fail(f"{path.name}: ships a GameTest entrypoint")
+            entrypoint_classes = str(entrypoints)
+            if "ChestwiseGameTests" in entrypoint_classes:
+                fail(f"{path.name}: references a GameTest class from published metadata")
+            if not entrypoints.get("main") or not entrypoints.get("client"):
+                fail(f"{path.name}: missing runtime Fabric entrypoints")
+            contact = metadata.get("contact", {})
+            if contact.get("sources") != "https://github.com/Jovinull/Chestwise":
+                fail(f"{path.name}: invalid Fabric source URL")
+            if contact.get("issues") != "https://github.com/Jovinull/Chestwise/issues":
+                fail(f"{path.name}: invalid Fabric issue URL")
         elif "modId = \"chestwise\"" not in metadata_text and 'modId="chestwise"' not in metadata_text:
             fail(f"{path.name}: invalid Forge-family mod id")
         elif 'logoFile = "assets/chestwise/icon.png"' not in metadata_text and 'logoFile="assets/chestwise/icon.png"' not in metadata_text:
             fail(f"{path.name}: missing Forge-family icon declaration")
+        elif "https://github.com/Jovinull/Chestwise/issues" not in metadata_text:
+            fail(f"{path.name}: invalid Forge-family issue URL")
 
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -116,7 +159,8 @@ def main() -> int:
     for artifact in ARTIFACTS:
         digest = validate(artifact)
         checksums.append((digest, artifact.path.name))
-        print(f"PASS {artifact.loader:8} {artifact.minecraft:6} {artifact.path.name}")
+        size = artifact.path.stat().st_size
+        print(f"PASS {artifact.loader:8} {artifact.minecraft:6} {size:8} B  {artifact.path.name}")
 
     if not args.check_only:
         destination = ROOT / "build" / "release"
