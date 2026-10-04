@@ -212,6 +212,25 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
 
     /** Returns fresh physical-storage counts grouped by item id for transfer planning. */
     public Map<String, Long> availableItemCounts() {
+        reconcileValidSources();
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (IndexedItem indexed : index.snapshot()) {
+            counts.merge(indexed.descriptor().identity().itemId(), indexed.totalCount(), StorageTerminalBlockEntity::safeAdd);
+        }
+        return Map.copyOf(counts);
+    }
+
+    /** Returns fresh source totals keyed by the same exact identity used by the item index. */
+    public Map<ItemIdentity, Long> availableIdentityCounts() {
+        reconcileValidSources();
+        Map<ItemIdentity, Long> counts = new LinkedHashMap<>();
+        for (IndexedItem indexed : index.snapshot()) {
+            counts.put(indexed.descriptor().identity(), indexed.totalCount());
+        }
+        return Map.copyOf(counts);
+    }
+
+    private void reconcileValidSources() {
         for (MinecraftStorageSource source : List.copyOf(sources.values())) {
             if (source.isValid()) {
                 index.reconcile(source.snapshot());
@@ -220,11 +239,10 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
                 index.invalidate(source.sourceId());
             }
         }
-        Map<String, Long> counts = new LinkedHashMap<>();
-        for (IndexedItem indexed : index.snapshot()) {
-            counts.merge(indexed.descriptor().identity().itemId(), indexed.totalCount(), Long::sum);
-        }
-        return Map.copyOf(counts);
+    }
+
+    private static long safeAdd(long first, long second) {
+        return first > Long.MAX_VALUE - second ? Long.MAX_VALUE : first + second;
     }
 
     public ItemStack representative(ItemIdentity identity) {

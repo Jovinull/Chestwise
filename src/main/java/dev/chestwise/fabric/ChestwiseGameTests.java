@@ -3,8 +3,11 @@ package dev.chestwise.fabric;
 //? if fabric {
 import dev.chestwise.core.IndexedItem;
 import dev.chestwise.core.RecipeSlotCodec;
+import dev.chestwise.core.RestockTargetBook;
 import dev.chestwise.core.SortMode;
 import dev.chestwise.minecraft.ChestwiseContent;
+import dev.chestwise.minecraft.ItemStackIdentity;
+import dev.chestwise.minecraft.RestockSavedData;
 import dev.chestwise.minecraft.StorageTerminalBlockEntity;
 import dev.chestwise.minecraft.StorageTerminalMenu;
 import java.util.List;
@@ -18,6 +21,7 @@ import net.minecraft.world.level.block.entity.ChestBlockEntity;
 *///?}
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 //? if < 26.2 {
 import net.minecraft.world.inventory.ClickType;
@@ -649,6 +653,390 @@ public final class ChestwiseGameTests implements FabricGameTest {
             menu.removed(player);
             helper.succeed();
         });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void restockFillsOnlyTheTargetDeficit(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.PRISMARINE_SHARD, 64));
+        chest.setItem(1, new ItemStack(Items.PRISMARINE_SHARD, 64));
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = restockPlayer(helper, terminal);
+            player.getInventory().setItem(0, new ItemStack(Items.PRISMARINE_SHARD, 16));
+            setRestockTarget(player, new ItemStack(Items.PRISMARINE_SHARD), 64);
+            StorageTerminalMenu menu = new StorageTerminalMenu(20, player.getInventory(), terminal);
+            helper.assertTrue(menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_RESTOCK), "Restock intent was rejected");
+            helper.assertTrue(count(player, new ItemStack(Items.PRISMARINE_SHARD)) == 64,
+                "Restock did not fill the exact target");
+            helper.assertTrue(chest.getItem(0).getCount() + chest.getItem(1).getCount() == 80,
+                "Restock removed more than the target deficit");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void restockAcceptsPartialSourceAvailability(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.PHANTOM_MEMBRANE, 20));
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = restockPlayer(helper, terminal);
+            player.getInventory().setItem(0, new ItemStack(Items.PHANTOM_MEMBRANE, 10));
+            setRestockTarget(player, new ItemStack(Items.PHANTOM_MEMBRANE), 64);
+            StorageTerminalMenu menu = new StorageTerminalMenu(21, player.getInventory(), terminal);
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_RESTOCK);
+            helper.assertTrue(count(player, new ItemStack(Items.PHANTOM_MEMBRANE)) == 30,
+                "A partial source should still restock the amount that exists");
+            helper.assertTrue(chest.getItem(0).isEmpty(), "Partial source was not fully consumed");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void restockNeverExtractsBeyondPlayerCapacity(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.GLOW_INK_SAC, 64));
+        chest.setItem(1, new ItemStack(Items.GLOW_INK_SAC, 64));
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = restockPlayer(helper, terminal);
+            player.getInventory().setItem(0, new ItemStack(Items.GLOW_INK_SAC, 16));
+            for (int slot = 1; slot < 36; slot++) {
+                player.getInventory().setItem(slot, new ItemStack(Items.STONE, 64));
+            }
+            setRestockTarget(player, new ItemStack(Items.GLOW_INK_SAC), 64);
+            StorageTerminalMenu menu = new StorageTerminalMenu(22, player.getInventory(), terminal);
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_RESTOCK);
+            helper.assertTrue(count(player, new ItemStack(Items.GLOW_INK_SAC)) == 64,
+                "Restock did not use the remaining capacity in the matching stack");
+            helper.assertTrue(chest.getItem(0).getCount() + chest.getItem(1).getCount() == 80,
+                "Restock extracted items that could not fit in the player inventory");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void restockCountsButNeverMutatesProtectedSlots(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.HONEYCOMB, 20));
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = restockPlayer(helper, terminal);
+            player.getInventory().setItem(0, new ItemStack(Items.HONEYCOMB, 60));
+            setRestockTarget(player, new ItemStack(Items.HONEYCOMB), 64);
+            StorageTerminalMenu menu = new StorageTerminalMenu(23, player.getInventory(), terminal);
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_PROTECT_BASE);
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_RESTOCK);
+            helper.assertTrue(player.getInventory().getItem(0).getCount() == 60,
+                "Restock changed a protected stack");
+            helper.assertTrue(count(player, new ItemStack(Items.HONEYCOMB)) == 64,
+                "Protected items were not counted toward the target");
+            helper.assertTrue(chest.getItem(0).getCount() == 16,
+                "Restock extracted more than the unprotected deficit");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void restockUsesTheConfiguredExactItemVariant(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        ItemStack wrong = new ItemStack(Items.DIAMOND_PICKAXE);
+        wrong.setDamageValue(10);
+        ItemStack desired = new ItemStack(Items.DIAMOND_PICKAXE);
+        desired.setDamageValue(1);
+        chest.setItem(0, wrong.copy());
+        chest.setItem(1, desired.copy());
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = restockPlayer(helper, terminal);
+            setRestockTarget(player, desired, 1);
+            StorageTerminalMenu menu = new StorageTerminalMenu(24, player.getInventory(), terminal);
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_RESTOCK);
+            ItemStack received = findVariant(player, desired);
+            helper.assertTrue(!received.isEmpty() && received.getDamageValue() == 1,
+                "Restock did not insert the configured damage variant");
+            helper.assertTrue(chest.getItem(0).getDamageValue() == 10 && chest.getItem(1).isEmpty(),
+                "Restock extracted a different item variant");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void restockProcessesTargetsIndependently(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.SLIME_BALL, 4));
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = restockPlayer(helper, terminal);
+            player.getInventory().setItem(0, new ItemStack(Items.MAGMA_CREAM, 64));
+            setRestockTarget(player, new ItemStack(Items.MAGMA_CREAM), 64);
+            setRestockTarget(player, new ItemStack(Items.SLIME_BALL), 16);
+            setRestockTarget(player, new ItemStack(Items.DRAGON_BREATH), 4);
+            StorageTerminalMenu menu = new StorageTerminalMenu(25, player.getInventory(), terminal);
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_RESTOCK);
+            helper.assertTrue(count(player, new ItemStack(Items.MAGMA_CREAM)) == 64,
+                "Already satisfied target changed");
+            helper.assertTrue(count(player, new ItemStack(Items.SLIME_BALL)) == 4 && chest.getItem(0).isEmpty(),
+                "Available partial target was not restocked");
+            helper.assertTrue(count(player, new ItemStack(Items.DRAGON_BREATH)) == 0,
+                "Missing target unexpectedly appeared");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void concurrentRestockCannotConsumeSourceTwice(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.FEATHER, 20));
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer first = restockPlayer(helper, terminal);
+            ServerPlayer second = restockPlayer(helper, terminal);
+            setRestockTarget(first, new ItemStack(Items.FEATHER), 64);
+            setRestockTarget(second, new ItemStack(Items.FEATHER), 64);
+            StorageTerminalMenu firstMenu = new StorageTerminalMenu(26, first.getInventory(), terminal);
+            StorageTerminalMenu secondMenu = new StorageTerminalMenu(27, second.getInventory(), terminal);
+            firstMenu.clickMenuButton(first, StorageTerminalMenu.BUTTON_RESTOCK);
+            secondMenu.clickMenuButton(second, StorageTerminalMenu.BUTTON_RESTOCK);
+            long total = count(first, new ItemStack(Items.FEATHER)) + count(second, new ItemStack(Items.FEATHER))
+                + chest.getItem(0).getCount();
+            helper.assertTrue(total == 20, "Concurrent restock duplicated or lost source items");
+            helper.assertTrue(Math.max(count(first, new ItemStack(Items.FEATHER)), count(second, new ItemStack(Items.FEATHER))) == 20,
+                "The source was not consumed at most once");
+            firstMenu.removed(first);
+            secondMenu.removed(second);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void restockMenuActionsAreValidatedAndTargetsAreUpdatedNotDuplicated(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = restockPlayer(helper, terminal);
+            player.getInventory().setItem(0, new ItemStack(Items.PRISMARINE_CRYSTALS, 1));
+            StorageTerminalMenu menu = new StorageTerminalMenu(28, player.getInventory(), terminal);
+            helper.assertTrue(menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_TARGET_VIEW), "Target view did not open");
+            helper.assertTrue(menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_ADD_TARGET), "Add-target mode was rejected");
+            clickPickup(menu, StorageTerminalMenu.PLAYER_START + 27, player);
+            helper.assertTrue(restockData(player).targets(player.getUUID()).size() == 1,
+                "Adding an item from inventory did not create exactly one target");
+            clickPickup(menu, StorageTerminalMenu.RESTOCK_START, player);
+            helper.assertTrue(menu.clickMenuButton(
+                player,
+                StorageTerminalMenu.BUTTON_SET_TARGET_BASE + 128
+            ), "Target quantity update was rejected");
+            helper.assertTrue(menu.selectedTargetCount() == 128, "Target quantity did not update");
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_ADD_TARGET);
+            clickPickup(menu, StorageTerminalMenu.PLAYER_START + 27, player);
+            List<RestockSavedData.Target> targets = restockData(player).targets(player.getUUID());
+            helper.assertTrue(targets.size() == 1 && targets.get(0).desiredCount() == 128,
+                "Selecting an existing target duplicated it or reset its quantity");
+            menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_REMOVE_TARGET);
+            helper.assertTrue(restockData(player).targets(player.getUUID()).isEmpty(),
+                "Removing a selected target did not remove it");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void restockRejectsAnInvalidTerminalDistance(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.RABBIT_FOOT, 5));
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = restockPlayer(helper, terminal);
+            setRestockTarget(player, new ItemStack(Items.RABBIT_FOOT), 5);
+            player.setPos(100.0, 80.0, 100.0);
+            StorageTerminalMenu menu = new StorageTerminalMenu(29, player.getInventory(), terminal);
+            helper.assertTrue(!menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_RESTOCK),
+                "Out-of-range restock intent was accepted");
+            helper.assertTrue(chest.getItem(0).getCount() == 5,
+                "Out-of-range restock mutated physical storage");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    private static ServerPlayer restockPlayer(GameTestHelper helper, StorageTerminalBlockEntity terminal) {
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        BlockPos position = terminal.getBlockPos();
+        player.setPos(position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5);
+        return player;
+    }
+
+    private static void setRestockTarget(ServerPlayer player, ItemStack sample, int desiredCount) {
+        restockData(player).setTarget(player.getUUID(), sample, desiredCount);
+    }
+
+    private static RestockSavedData restockData(ServerPlayer player) {
+        //? if < 26.2 {
+        return RestockSavedData.get((ServerLevel) player.level());
+        //?} else {
+        /*return RestockSavedData.get(player.level());
+        *///?}
+    }
+
+    private static long count(ServerPlayer player, ItemStack exactStack) {
+        long count = 0;
+        for (int slot = 0; slot < 36; slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (ItemStackIdentity.sameVariant(stack, exactStack)) {
+                count += stack.getCount();
+            }
+        }
+        return count;
+    }
+
+    private static ItemStack findVariant(ServerPlayer player, ItemStack exactStack) {
+        for (int slot = 0; slot < 36; slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (ItemStackIdentity.sameVariant(stack, exactStack)) {
+                return stack;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static void clickPickup(StorageTerminalMenu menu, int slotId, ServerPlayer player) {
+        //? if < 26.2 {
+        menu.clicked(slotId, 0, ClickType.PICKUP, player);
+        //?} else {
+        /*menu.clicked(slotId, 0, ContainerInput.PICKUP, player);
+        *///?}
     }
 
     private static void assertCount(GameTestHelper helper, StorageTerminalBlockEntity terminal, long expected) {

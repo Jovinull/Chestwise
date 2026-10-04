@@ -4,6 +4,13 @@ import dev.chestwise.core.IndexedItem;
 import dev.chestwise.core.ItemIdentity;
 import dev.chestwise.core.RecipeSlotCodec;
 import dev.chestwise.core.RecipeSlotPlanner;
+import dev.chestwise.core.RestockInsertion;
+import dev.chestwise.core.RestockPlan;
+import dev.chestwise.core.RestockPlayerSlot;
+import dev.chestwise.core.RestockPlanner;
+import dev.chestwise.core.RestockStep;
+import dev.chestwise.core.RestockTarget;
+import dev.chestwise.core.RestockTargetBook;
 import dev.chestwise.core.SortMode;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -11,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -29,6 +37,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.particles.ParticleTypes;
 
@@ -42,6 +51,9 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
     public static final int CRAFT_END = CRAFT_START + 9;
     public static final int RESULT_SLOT = CRAFT_END;
     public static final int PLAYER_START = RESULT_SLOT + 1;
+    public static final int PLAYER_END = PLAYER_START + PLAYER_STORAGE_SLOTS;
+    public static final int RESTOCK_VISIBLE_TARGETS = 15;
+    public static final int RESTOCK_START = PLAYER_END;
     public static final int BUTTON_PREVIOUS = 0;
     public static final int BUTTON_NEXT = 1;
     public static final int BUTTON_SORT = 2;
@@ -50,15 +62,29 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
     public static final int BUTTON_SCROLL_WITHDRAW_BASE = 100;
     public static final int BUTTON_SCROLL_DEPOSIT_BASE = 200;
     public static final int BUTTON_PROTECT_BASE = 300;
+    public static final int BUTTON_RESTOCK = 5;
+    public static final int BUTTON_TARGET_VIEW = 6;
+    public static final int BUTTON_ADD_TARGET = 7;
+    public static final int BUTTON_APPLY_TARGET = 8;
+    public static final int BUTTON_REMOVE_TARGET = 9;
+    public static final int BUTTON_SET_TARGET_BASE = 10_000;
 
     private final SimpleContainer display = new SimpleContainer(DISPLAY_SLOTS);
+    private final SimpleContainer restockDisplay = new SimpleContainer(RESTOCK_VISIBLE_TARGETS);
     private final long[] displayCounts = new long[DISPLAY_SLOTS];
+    private final int[] restockTargetCounts = new int[RESTOCK_VISIBLE_TARGETS];
     private final List<ItemIdentity> identities = new ArrayList<>(DISPLAY_SLOTS);
     private final Set<Integer> protectedSlots = new HashSet<>();
     private final net.minecraft.world.inventory.CraftingContainer crafting;
     private final ResultContainer craftingResult;
     private final StorageTerminalBlockEntity terminal;
     private final Player menuPlayer;
+    private boolean targetView;
+    private boolean addTargetMode;
+    private int targetPage;
+    private int targetPageCount = 1;
+    private int selectedTarget = -1;
+    private long lastRestockGameTime = Long.MIN_VALUE;
     private String query = "";
     private SortMode sortMode = SortMode.QUANTITY;
     private int page;
@@ -87,12 +113,19 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
                 public boolean mayPlace(ItemStack stack) {
                     return false;
                 }
+
+                @Override
+                public boolean isActive() {
+                    return !targetView;
+                }
             });
         }
         addCraftingSlots(inventory.player);
         addPlayerSlots(inventory);
+        addRestockTargetSlots();
         addSynchronization();
         refresh();
+        refreshRestockTargetDisplay();
         // Opening a second menu must immediately resolve the output already on
         // the shared grid, rather than waiting for that player to edit a slot.
         slotsChanged(crafting);
@@ -125,6 +158,33 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
                 sortMode = values[Math.floorMod(value, values.length)];
             }
         });
+        addDataSlot(new DataSlot() {
+            @Override public int get() { return targetView ? 1 : 0; }
+            @Override public void set(int value) { targetView = value != 0; }
+        });
+        addDataSlot(new DataSlot() {
+            @Override public int get() { return addTargetMode ? 1 : 0; }
+            @Override public void set(int value) { addTargetMode = value != 0; }
+        });
+        addDataSlot(new DataSlot() {
+            @Override public int get() { return targetPage; }
+            @Override public void set(int value) { targetPage = Math.max(0, value); }
+        });
+        addDataSlot(new DataSlot() {
+            @Override public int get() { return targetPageCount; }
+            @Override public void set(int value) { targetPageCount = Math.max(1, value); }
+        });
+        addDataSlot(new DataSlot() {
+            @Override public int get() { return selectedTarget; }
+            @Override public void set(int value) { selectedTarget = value; }
+        });
+        for (int slot = 0; slot < RESTOCK_VISIBLE_TARGETS; slot++) {
+            int targetSlot = slot;
+            addDataSlot(new DataSlot() {
+                @Override public int get() { return restockTargetCounts[targetSlot]; }
+                @Override public void set(int value) { restockTargetCounts[targetSlot] = Math.max(0, value); }
+            });
+        }
         addDataSlot(protectionData(0));
         addDataSlot(protectionData(16));
         addDataSlot(protectionData(32));
@@ -228,6 +288,88 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         broadcastChanges();
     }
 
+    private void refreshRestockTargetDisplay() {
+        List<RestockSavedData.Target> targets = currentRestockTargets();
+        targetPageCount = Math.max(1, (targets.size() + RESTOCK_VISIBLE_TARGETS - 1) / RESTOCK_VISIBLE_TARGETS);
+        targetPage = Math.min(targetPage, targetPageCount - 1);
+        if (selectedTarget >= targets.size()) {
+            selectedTarget = -1;
+        }
+        int offset = targetPage * RESTOCK_VISIBLE_TARGETS;
+        for (int slot = 0; slot < RESTOCK_VISIBLE_TARGETS; slot++) {
+            int targetIndex = offset + slot;
+            if (targetIndex >= targets.size()) {
+                restockDisplay.setItem(slot, ItemStack.EMPTY);
+                restockTargetCounts[slot] = 0;
+            } else {
+                RestockSavedData.Target target = targets.get(targetIndex);
+                restockDisplay.setItem(slot, target.item());
+                restockTargetCounts[slot] = target.desiredCount();
+            }
+        }
+        broadcastChanges();
+    }
+
+    private List<RestockSavedData.Target> currentRestockTargets() {
+        if (menuPlayer.level() instanceof ServerLevel serverLevel) {
+            return RestockSavedData.get(serverLevel).targets(menuPlayer.getUUID());
+        }
+        return List.of();
+    }
+
+    public boolean targetView() {
+        return targetView;
+    }
+
+    public boolean addTargetMode() {
+        return addTargetMode;
+    }
+
+    public int targetPage() {
+        return targetPage;
+    }
+
+    public int targetPageCount() {
+        return targetPageCount;
+    }
+
+    public int selectedTarget() {
+        return selectedTarget;
+    }
+
+    public int selectedTargetCount() {
+        if (selectedTarget < 0) {
+            return 0;
+        }
+        if (isClientSide(menuPlayer)) {
+            int visibleSlot = selectedTarget - targetPage * RESTOCK_VISIBLE_TARGETS;
+            return visibleSlot >= 0 && visibleSlot < RESTOCK_VISIBLE_TARGETS
+                ? restockTargetCounts[visibleSlot] : 0;
+        }
+        List<RestockSavedData.Target> targets = currentRestockTargets();
+        return selectedTarget < targets.size() ? targets.get(selectedTarget).desiredCount() : 0;
+    }
+
+    public int restockTargetCount(int targetSlot) {
+        return targetSlot >= 0 && targetSlot < RESTOCK_VISIBLE_TARGETS ? restockTargetCounts[targetSlot] : 0;
+    }
+
+    public boolean isSelectedTargetSlot(int targetSlot) {
+        return selectedTarget == targetPage * RESTOCK_VISIBLE_TARGETS + targetSlot;
+    }
+
+    /** Updates only the local mirror; the matching menu-button intent is still validated by the server. */
+    public void setTargetViewLocally(boolean enabled) {
+        targetView = enabled;
+        if (!enabled) {
+            addTargetMode = false;
+        }
+    }
+
+    public void setAddTargetModeLocally(boolean enabled) {
+        addTargetMode = enabled && targetView;
+    }
+
     @Override
     public void clicked(
         int slotId,
@@ -239,6 +381,21 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         *///?}
         Player player
     ) {
+        if (terminal != null && targetView && terminal.canUse(player)
+            && slotId >= RESTOCK_START && slotId < slots.size()) {
+            if (isPickup(clickType) && (button == 0 || button == 1)) {
+                int targetSlot = slots.get(slotId).getContainerSlot();
+                selectRestockTarget(targetPage * RESTOCK_VISIBLE_TARGETS + targetSlot);
+            }
+            return;
+        }
+        if (terminal != null && targetView && addTargetMode && terminal.canUse(player)
+            && slotId >= PLAYER_START && slotId < PLAYER_END) {
+            if (!isClientSide(player) && isPickup(clickType) && button == 0) {
+                addRestockTargetFromInventory(player, slots.get(slotId).getContainerSlot());
+            }
+            return;
+        }
         if (terminal != null && slotId >= 0 && slotId < DISPLAY_SLOTS) {
             // Vanilla's drag-to-distribute carries its stage in `button`, which
             // withdraw() would misread as a mouse button. A virtual grid has
@@ -364,7 +521,7 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
 
     @Override
     public ItemStack quickMoveStack(Player player, int slotId) {
-        if (terminal == null || slotId < CRAFT_START || slotId >= slots.size() || !terminal.canUse(player)) {
+        if (terminal == null || slotId < CRAFT_START || slotId >= RESTOCK_START || !terminal.canUse(player)) {
             return ItemStack.EMPTY;
         }
         Slot slot = slots.get(slotId);
@@ -475,6 +632,36 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         if (terminal == null || !terminal.canUse(player)) {
             return false;
         }
+        if (id >= BUTTON_SET_TARGET_BASE && id <= BUTTON_SET_TARGET_BASE + RestockTarget.MAX_DESIRED_COUNT) {
+            applySelectedTargetCount(player, id - BUTTON_SET_TARGET_BASE);
+            return true;
+        }
+        if (id == BUTTON_TARGET_VIEW) {
+            targetView = !targetView;
+            addTargetMode = false;
+            targetPage = 0;
+            refreshRestockTargetDisplay();
+            return true;
+        }
+        if (id == BUTTON_RESTOCK) {
+            executeRestock(player);
+            return true;
+        }
+        if (id == BUTTON_ADD_TARGET) {
+            if (!targetView) {
+                return false;
+            }
+            addTargetMode = !addTargetMode;
+            sendRestockFeedback(player, Component.translatable(
+                addTargetMode ? "gui.chestwise.restock.add_prompt" : "gui.chestwise.restock.add_cancelled"
+            ));
+            broadcastChanges();
+            return true;
+        }
+        if (id == BUTTON_REMOVE_TARGET) {
+            removeSelectedTarget(player);
+            return true;
+        }
         if (id >= BUTTON_SCROLL_WITHDRAW_BASE && id < BUTTON_SCROLL_WITHDRAW_BASE + DISPLAY_SLOTS) {
             scrollWithdraw(player, id - BUTTON_SCROLL_WITHDRAW_BASE);
             refresh();
@@ -491,8 +678,22 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             return true;
         }
         switch (id) {
-            case BUTTON_PREVIOUS -> page = Math.max(0, page - 1);
-            case BUTTON_NEXT -> page = Math.min(totalPages - 1, page + 1);
+            case BUTTON_PREVIOUS -> {
+                if (targetView) {
+                    targetPage = Math.max(0, targetPage - 1);
+                    refreshRestockTargetDisplay();
+                    return true;
+                }
+                page = Math.max(0, page - 1);
+            }
+            case BUTTON_NEXT -> {
+                if (targetView) {
+                    targetPage = Math.min(targetPageCount - 1, targetPage + 1);
+                    refreshRestockTargetDisplay();
+                    return true;
+                }
+                page = Math.min(totalPages - 1, page + 1);
+            }
             case BUTTON_SORT -> sortMode = SortMode.values()[(sortMode.ordinal() + 1) % SortMode.values().length];
             case BUTTON_DEPOSIT_MATCHING -> depositInventory(player, true);
             case BUTTON_DEPOSIT_ALL -> depositInventory(player, false);
@@ -627,6 +828,30 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         }
     }
 
+    private void addRestockTargetSlots() {
+        for (int row = 0; row < 5; row++) {
+            for (int column = 0; column < 3; column++) {
+                int targetSlot = column + row * 3;
+                addSlot(new Slot(restockDisplay, targetSlot, 8 + column * 18, 32 + row * 18) {
+                    @Override
+                    public boolean mayPlace(ItemStack stack) {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean mayPickup(Player player) {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isActive() {
+                        return targetView;
+                    }
+                });
+            }
+        }
+    }
+
     /** Moves anything already on the grid back into storage, without discarding a remainder. */
     private boolean returnGridToStorage() {
         for (int slot = 0; slot < crafting.getContainerSize(); slot++) {
@@ -641,6 +866,231 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             }
         }
         return true;
+    }
+
+    private void selectRestockTarget(int targetIndex) {
+        if (isClientSide(menuPlayer)) {
+            int visibleSlot = targetIndex - targetPage * RESTOCK_VISIBLE_TARGETS;
+            selectedTarget = visibleSlot >= 0 && visibleSlot < RESTOCK_VISIBLE_TARGETS
+                && !restockDisplay.getItem(visibleSlot).isEmpty() ? targetIndex : -1;
+            return;
+        }
+        List<RestockSavedData.Target> targets = currentRestockTargets();
+        if (targetIndex < 0 || targetIndex >= targets.size()) {
+            selectedTarget = -1;
+        } else {
+            selectedTarget = targetIndex;
+        }
+        broadcastChanges();
+    }
+
+    private void addRestockTargetFromInventory(Player player, int inventorySlot) {
+        if (!(player instanceof ServerPlayer) || !(player.level() instanceof ServerLevel serverLevel)
+            || inventorySlot < 0 || inventorySlot >= PLAYER_STORAGE_SLOTS) {
+            return;
+        }
+        ItemStack sample = player.getInventory().getItem(inventorySlot);
+        if (sample.isEmpty()) {
+            return;
+        }
+        RestockSavedData data = RestockSavedData.get(serverLevel);
+        List<RestockSavedData.Target> targets = data.targets(player.getUUID());
+        ItemIdentity identity = ItemStackIdentity.identity(sample);
+        for (int index = 0; index < targets.size(); index++) {
+            if (ItemStackIdentity.identity(targets.get(index).item()).equals(identity)) {
+                selectedTarget = index;
+                targetPage = index / RESTOCK_VISIBLE_TARGETS;
+                addTargetMode = false;
+                sendRestockFeedback(player, Component.translatable("gui.chestwise.restock.target_selected"));
+                refreshRestockTargetDisplay();
+                return;
+            }
+        }
+        RestockTargetBook.Change change = data.setTarget(player.getUUID(), sample, sample.getMaxStackSize());
+        if (change == RestockTargetBook.Change.INVALID || change == RestockTargetBook.Change.FULL) {
+            sendRestockFeedback(player, Component.translatable(
+                change == RestockTargetBook.Change.FULL
+                    ? "gui.chestwise.restock.targets_full"
+                    : "gui.chestwise.restock.invalid_target"
+            ));
+            return;
+        }
+        targets = data.targets(player.getUUID());
+        for (int index = 0; index < targets.size(); index++) {
+            if (ItemStackIdentity.identity(targets.get(index).item()).equals(identity)) {
+                selectedTarget = index;
+                targetPage = index / RESTOCK_VISIBLE_TARGETS;
+                break;
+            }
+        }
+        addTargetMode = false;
+        sendRestockFeedback(player, Component.translatable(
+            change == RestockTargetBook.Change.ADDED
+                ? "gui.chestwise.restock.target_added"
+                : "gui.chestwise.restock.target_selected"
+        ));
+        refreshRestockTargetDisplay();
+    }
+
+    private void applySelectedTargetCount(Player player, int desiredCount) {
+        if (!(player.level() instanceof ServerLevel serverLevel) || selectedTarget < 0) {
+            return;
+        }
+        RestockSavedData data = RestockSavedData.get(serverLevel);
+        List<RestockSavedData.Target> targets = data.targets(player.getUUID());
+        if (selectedTarget >= targets.size()) {
+            selectedTarget = -1;
+            refreshRestockTargetDisplay();
+            return;
+        }
+        RestockSavedData.Target target = targets.get(selectedTarget);
+        RestockTargetBook.Change change = data.setTarget(player.getUUID(), target.item(), desiredCount);
+        if (change == RestockTargetBook.Change.INVALID) {
+            sendRestockFeedback(player, Component.translatable("gui.chestwise.restock.invalid_target"));
+            return;
+        }
+        sendRestockFeedback(player, Component.translatable("gui.chestwise.restock.target_updated"));
+        refreshRestockTargetDisplay();
+    }
+
+    private void removeSelectedTarget(Player player) {
+        if (!(player.level() instanceof ServerLevel serverLevel) || selectedTarget < 0) {
+            return;
+        }
+        RestockSavedData data = RestockSavedData.get(serverLevel);
+        boolean removed = data.removeTarget(player.getUUID(), selectedTarget);
+        selectedTarget = removed ? Math.min(selectedTarget, data.targets(player.getUUID()).size() - 1) : -1;
+        sendRestockFeedback(player, Component.translatable(
+            removed ? "gui.chestwise.restock.target_removed" : "gui.chestwise.restock.no_selection"
+        ));
+        refreshRestockTargetDisplay();
+    }
+
+    private void executeRestock(Player player) {
+        if (!(player instanceof ServerPlayer) || !(player.level() instanceof ServerLevel serverLevel)
+            || !terminal.canUse(player)) {
+            return;
+        }
+        long now = serverLevel.getGameTime();
+        if (lastRestockGameTime != Long.MIN_VALUE && now - lastRestockGameTime < 4) {
+            return;
+        }
+        lastRestockGameTime = now;
+        List<RestockSavedData.Target> targets = RestockSavedData.get(serverLevel).targets(player.getUUID());
+        if (targets.isEmpty()) {
+            sendRestockFeedback(player, Component.translatable("gui.chestwise.restock.no_targets"));
+            return;
+        }
+
+        long moved = 0;
+        int incomplete = 0;
+        for (RestockSavedData.Target target : targets) {
+            ItemStack targetStack = target.item();
+            ItemIdentity identity = ItemStackIdentity.identity(targetStack);
+            RestockTarget pureTarget = new RestockTarget(identity, target.desiredCount(), targetStack.getMaxStackSize());
+            RestockPlan plan = RestockPlanner.plan(
+                List.of(pureTarget),
+                restockInventorySnapshot(player),
+                terminal.availableIdentityCounts()
+            );
+            RestockStep step = plan.steps().get(0);
+            if (step.plannedCount() > 0) {
+                ItemStack extracted = terminal.withdraw(identity, (int) step.plannedCount());
+                if (!extracted.isEmpty()) {
+                    moved += insertRestockResult(player, extracted, step.insertions(), identity);
+                }
+            }
+            if (countPlayerIdentity(player, identity) < target.desiredCount()) {
+                incomplete++;
+            }
+        }
+        player.getInventory().setChanged();
+        refreshRestockTargetDisplay();
+        refresh();
+        String feedback = moved == 0
+            ? incomplete == 0 ? "gui.chestwise.restock.nothing_needed" : "gui.chestwise.restock.no_items_moved"
+            : "gui.chestwise.restock.completed";
+        if (moved == 0) {
+            sendRestockFeedback(player, Component.translatable(feedback));
+        } else {
+            sendRestockFeedback(player, Component.translatable(feedback, moved, incomplete));
+        }
+    }
+
+    private static void sendRestockFeedback(Player player, Component message) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.sendSystemMessage(message, true);
+        }
+    }
+
+    private List<RestockPlayerSlot> restockInventorySnapshot(Player player) {
+        Inventory inventory = player.getInventory();
+        List<RestockPlayerSlot> snapshot = new ArrayList<>(PLAYER_STORAGE_SLOTS);
+        for (int slot = 0; slot < PLAYER_STORAGE_SLOTS; slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            snapshot.add(new RestockPlayerSlot(
+                slot,
+                stack.isEmpty() ? null : ItemStackIdentity.identity(stack),
+                stack.getCount(),
+                protectedSlots.contains(slot)
+            ));
+        }
+        return snapshot;
+    }
+
+    private long countPlayerIdentity(Player player, ItemIdentity identity) {
+        long total = 0;
+        Inventory inventory = player.getInventory();
+        for (int slot = 0; slot < PLAYER_STORAGE_SLOTS; slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (ItemStackIdentity.matches(stack, identity)) {
+                total += stack.getCount();
+            }
+        }
+        return total;
+    }
+
+    private int insertRestockResult(
+        Player player,
+        ItemStack extracted,
+        List<RestockInsertion> insertions,
+        ItemIdentity identity
+    ) {
+        int originalCount = extracted.getCount();
+        int remaining = originalCount;
+        Inventory inventory = player.getInventory();
+        for (RestockInsertion insertion : insertions) {
+            if (remaining == 0 || protectedSlots.contains(insertion.playerSlot())) {
+                continue;
+            }
+            ItemStack existing = inventory.getItem(insertion.playerSlot());
+            if (!existing.isEmpty() && !ItemStackIdentity.matches(existing, identity)) {
+                continue;
+            }
+            int maxStack = extracted.getMaxStackSize();
+            int space = existing.isEmpty() ? maxStack : maxStack - existing.getCount();
+            int inserted = Math.min(remaining, Math.min(insertion.count(), Math.max(0, space)));
+            if (inserted <= 0) {
+                continue;
+            }
+            if (existing.isEmpty()) {
+                ItemStack placed = extracted.copy();
+                placed.setCount(inserted);
+                inventory.setItem(insertion.playerSlot(), placed);
+            } else {
+                existing.grow(inserted);
+            }
+            remaining -= inserted;
+        }
+        if (remaining > 0) {
+            ItemStack compensation = extracted.copy();
+            compensation.setCount(remaining);
+            terminal.deposit(compensation, false);
+            if (!compensation.isEmpty()) {
+                player.drop(compensation, false);
+            }
+        }
+        return originalCount - remaining;
     }
 
     private ItemStack takeOneFromInventory(Player player, List<String> options) {

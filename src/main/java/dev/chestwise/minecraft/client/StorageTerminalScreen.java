@@ -50,6 +50,15 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     private ChestwiseClientPreferences preferences;
     private SortMode preferredSort;
     private Button sortButton;
+    private Button targetViewButton;
+    private Button depositMatchingButton;
+    private Button depositAllButton;
+    private Button restockButton;
+    private Button addTargetButton;
+    private Button applyTargetButton;
+    private Button removeTargetButton;
+    private EditBox targetCount;
+    private int shownSelectedTarget = Integer.MIN_VALUE;
 
     public StorageTerminalScreen(StorageTerminalMenu menu, Inventory inventory, Component title) {
         //? if < 26.2 {
@@ -82,9 +91,28 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
             .bounds(leftPos + 142, topPos + 16, 28, 14)
             .build();
         addRenderableWidget(sortButton);
+        targetViewButton = button(174, 16, 68, "gui.chestwise.restock.targets", StorageTerminalMenu.BUTTON_TARGET_VIEW);
+        addRenderableWidget(targetViewButton);
         // Kept clear of the inventory label, which used to sit underneath them.
-        addRenderableWidget(button(174, 141, 68, "gui.chestwise.deposit_matching", StorageTerminalMenu.BUTTON_DEPOSIT_MATCHING));
-        addRenderableWidget(button(174, 161, 68, "gui.chestwise.deposit_all", StorageTerminalMenu.BUTTON_DEPOSIT_ALL));
+        depositMatchingButton = button(174, 141, 68, "gui.chestwise.deposit_matching", StorageTerminalMenu.BUTTON_DEPOSIT_MATCHING);
+        depositAllButton = button(174, 161, 68, "gui.chestwise.deposit_all", StorageTerminalMenu.BUTTON_DEPOSIT_ALL);
+        restockButton = button(174, 181, 68, "gui.chestwise.restock.button", StorageTerminalMenu.BUTTON_RESTOCK);
+        addTargetButton = button(174, 161, 68, "gui.chestwise.restock.add_item", StorageTerminalMenu.BUTTON_ADD_TARGET);
+        targetCount = new EditBox(font, leftPos + 174, topPos + 181, 43, 14,
+            Component.translatable("gui.chestwise.restock.target_count"));
+        targetCount.setMaxLength(4);
+        targetCount.setHint(Component.translatable("gui.chestwise.restock.target_count"));
+        addRenderableWidget(targetCount);
+        applyTargetButton = Button.builder(Component.translatable("gui.chestwise.restock.set"), ignored -> applyTargetCount())
+            .bounds(leftPos + 219, topPos + 181, 23, 14)
+            .build();
+        addRenderableWidget(applyTargetButton);
+        removeTargetButton = button(174, 201, 68, "gui.chestwise.restock.remove", StorageTerminalMenu.BUTTON_REMOVE_TARGET);
+        addRenderableWidget(depositMatchingButton);
+        addRenderableWidget(depositAllButton);
+        addRenderableWidget(restockButton);
+        addRenderableWidget(addTargetButton);
+        addRenderableWidget(removeTargetButton);
         preferences = ChestwiseClientPreferences.load(
             minecraft.gameDirectory.toPath().resolve("config/chestwise-client.properties")
         );
@@ -139,6 +167,14 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
 
     private void sendButton(int id) {
         if (minecraft != null && minecraft.gameMode != null) {
+            if (id == StorageTerminalMenu.BUTTON_TARGET_VIEW) {
+                menu.setTargetViewLocally(!menu.targetView());
+                if (menu.targetView()) {
+                    search.setFocused(false);
+                }
+            } else if (id == StorageTerminalMenu.BUTTON_ADD_TARGET) {
+                menu.setAddTargetModeLocally(!menu.addTargetMode());
+            }
             if (id == StorageTerminalMenu.BUTTON_SORT && preferences != null) {
                 preferredSort = SortMode.values()[(preferredSort.ordinal() + 1) % SortMode.values().length];
                 preferences.setSortMode(preferredSort);
@@ -175,12 +211,59 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
         if (sortButton != null) {
             sortButton.setMessage(sortLabel());
         }
+        boolean targetMode = menu.targetView();
+        if (search != null) {
+            search.visible = !targetMode;
+            search.setFocused(!targetMode && search.isFocused());
+        }
+        if (targetViewButton != null) {
+            targetViewButton.setMessage(Component.translatable(
+                targetMode ? "gui.chestwise.restock.items" : "gui.chestwise.restock.targets"
+            ));
+            sortButton.visible = !targetMode;
+            depositMatchingButton.visible = !targetMode;
+            depositAllButton.visible = !targetMode;
+            restockButton.visible = true;
+            addTargetButton.visible = targetMode;
+            targetCount.visible = targetMode && menu.selectedTarget() >= 0;
+            applyTargetButton.visible = targetCount.visible;
+            removeTargetButton.visible = targetMode && menu.selectedTarget() >= 0;
+            restockButton.setY(topPos + (targetMode ? 141 : 181));
+            addTargetButton.setMessage(Component.translatable(
+                menu.addTargetMode() ? "gui.chestwise.restock.click_item" : "gui.chestwise.restock.add_item"
+            ));
+            int selected = menu.selectedTarget();
+            if (selected != shownSelectedTarget) {
+                shownSelectedTarget = selected;
+                targetCount.setValue(menu.selectedTargetCount() > 0
+                    ? Integer.toString(menu.selectedTargetCount()) : "");
+            }
+        }
         //? if <= 1.20.1 {
-        search.tick();
+        if (!targetMode) {
+            search.tick();
+        }
         //?}
-        if (queryDirty && --debounceTicks <= 0) {
+        if (!targetMode && queryDirty && --debounceTicks <= 0) {
             queryDirty = false;
             ChestwiseNetworking.sendSearch(search.getValue());
+        }
+    }
+
+    private void applyTargetCount() {
+        if (minecraft == null || minecraft.gameMode == null || targetCount.getValue().isBlank()) {
+            return;
+        }
+        try {
+            int desired = Integer.parseInt(targetCount.getValue());
+            if (desired > 0 && desired <= 4096) {
+                minecraft.gameMode.handleInventoryButtonClick(
+                    menu.containerId,
+                    StorageTerminalMenu.BUTTON_SET_TARGET_BASE + desired
+                );
+            }
+        } catch (NumberFormatException ignored) {
+            // Invalid numeric input never becomes a server action.
         }
     }
 
@@ -203,18 +286,27 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
         // the default depth would bury these behind the item sprite.
         graphics.pose().pushPose();
         graphics.pose().translate(0.0F, 0.0F, 300.0F);
-        for (int slot = 0; slot < StorageTerminalMenu.DISPLAY_SLOTS; slot++) {
-            long count = menu.displayCount(slot);
-            if (count <= 1) {
-                continue;
+        if (menu.targetView()) {
+            for (int slot = 0; slot < StorageTerminalMenu.RESTOCK_VISIBLE_TARGETS; slot++) {
+                drawRestockCount(graphics, slot, menu.restockTargetCount(slot));
             }
-            String label = AggregateCountFormat.compact(count);
-            // Same offsets vanilla uses for a stack count, so both read alike.
-            int x = leftPos + 8 + slot % StorageTerminalMenu.COLUMNS * 18 + 17 - font.width(label);
-            int y = topPos + 32 + slot / StorageTerminalMenu.COLUMNS * 18 + 9;
-            graphics.drawString(font, label, x, y, 0xffffff, true);
+        } else {
+            for (int slot = 0; slot < StorageTerminalMenu.DISPLAY_SLOTS; slot++) {
+                drawRestockCount(graphics, slot, menu.displayCount(slot));
+            }
         }
         graphics.pose().popPose();
+    }
+
+    private void drawRestockCount(GuiGraphics graphics, int slot, long count) {
+        if (count <= 1) {
+            return;
+        }
+        String label = AggregateCountFormat.compact(count);
+        int columns = menu.targetView() ? 3 : StorageTerminalMenu.COLUMNS;
+        int x = leftPos + 8 + slot % columns * 18 + 17 - font.width(label);
+        int y = topPos + 32 + slot / columns * 18 + 9;
+        graphics.drawString(font, label, x, y, 0xffffff, true);
     }
     //?}
 
@@ -222,6 +314,18 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     /*@Override
     protected void extractSlot(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY) {
         super.extractSlot(graphics, slot, mouseX, mouseY);
+        if (menu.targetView()) {
+            if (slot.index >= StorageTerminalMenu.RESTOCK_START
+                && slot.index < StorageTerminalMenu.RESTOCK_START + StorageTerminalMenu.RESTOCK_VISIBLE_TARGETS) {
+                long count = menu.restockTargetCount(slot.getContainerSlot());
+                if (count > 1) {
+                    String label = AggregateCountFormat.compact(count);
+                    graphics.text(font, Component.literal(label),
+                        slot.x + 17 - font.width(label), slot.y + 9, 0xffffff, true);
+                }
+            }
+            return;
+        }
         if (slot.index >= StorageTerminalMenu.DISPLAY_SLOTS) {
             return;
         }
@@ -242,6 +346,13 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
             if (count > 0) {
                 tooltip.add(Component.translatable("gui.chestwise.total", Long.toString(count)).withStyle(ChatFormatting.GRAY));
             }
+        } else if (hoveredSlot != null && menu.targetView()
+            && hoveredSlot.index >= StorageTerminalMenu.RESTOCK_START
+            && hoveredSlot.index < StorageTerminalMenu.RESTOCK_START + StorageTerminalMenu.RESTOCK_VISIBLE_TARGETS) {
+            int count = menu.restockTargetCount(hoveredSlot.getContainerSlot());
+            if (count > 0) {
+                tooltip.add(Component.translatable("gui.chestwise.restock.desired", count).withStyle(ChatFormatting.GOLD));
+            }
         }
         return tooltip;
     }
@@ -261,6 +372,16 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
             graphics.fill(x, y, x + 18, y + 18, 0xff202020);
             graphics.fill(x + 1, y + 1, x + 17, y + 17, SLOT);
         }
+        if (menu.targetView()) {
+            graphics.fill(leftPos + 4, topPos + 13, leftPos + 174, topPos + 122, PANEL);
+            for (int slot = 0; slot < StorageTerminalMenu.RESTOCK_VISIBLE_TARGETS; slot++) {
+                int x = leftPos + 7 + slot % 3 * 18;
+                int y = topPos + 31 + slot / 3 * 18;
+                int border = menu.isSelectedTargetSlot(slot) ? 0xffd6a23a : 0xff202020;
+                graphics.fill(x, y, x + 18, y + 18, border);
+                graphics.fill(x + 1, y + 1, x + 17, y + 17, SLOT);
+            }
+        }
         // Crafting now occupies the empty right-hand third of the upper panel
         // instead of being wedged beside the player inventory.
         for (int slot = 0; slot < 9; slot++) {
@@ -271,7 +392,9 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
         }
         drawResultArrow(graphics);
         // Labels the search field without spending any of its width on text.
-        drawIcon(graphics, ICON_SEARCH, 6, 15);
+        if (!menu.targetView()) {
+            drawIcon(graphics, ICON_SEARCH, 6, 15);
+        }
         graphics.fill(leftPos + 197, topPos + 98, leftPos + 217, topPos + 118, 0xff8b8b8b);
         graphics.fill(leftPos + 198, topPos + 99, leftPos + 216, topPos + 117, 0xff202020);
         graphics.fill(leftPos + 199, topPos + 100, leftPos + 215, topPos + 116, SLOT);
@@ -343,18 +466,26 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     /*protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
     *///?}
         //? if < 26.2 {
-        graphics.drawString(font, title, titleLabelX, titleLabelY, 0x303030, false);
+        Component screenTitle = menu.targetView()
+            ? Component.translatable("gui.chestwise.restock.targets") : title;
+        graphics.drawString(font, screenTitle, titleLabelX, titleLabelY, 0x303030, false);
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x303030, false);
         // Sits on the dark panel now, so it needs the light ink.
         graphics.drawString(font, Component.translatable("gui.chestwise.crafting"), 180, 19, 0xe0e0e0, false);
-        Component pageText = Component.translatable("gui.chestwise.page", menu.page() + 1, menu.totalPages());
+        Component pageText = menu.targetView()
+            ? Component.translatable("gui.chestwise.page", menu.targetPage() + 1, menu.targetPageCount())
+            : Component.translatable("gui.chestwise.page", menu.page() + 1, menu.totalPages());
         graphics.drawString(font, pageText, 116, 6, 0x303030, false);
         //?} else {
-        /*graphics.text(font, title, titleLabelX, titleLabelY, 0x303030, false);
+        /*Component screenTitle = menu.targetView()
+            ? Component.translatable("gui.chestwise.restock.targets") : title;
+        graphics.text(font, screenTitle, titleLabelX, titleLabelY, 0x303030, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x303030, false);
         // Sits on the dark panel now, so it needs the light ink.
         graphics.text(font, Component.translatable("gui.chestwise.crafting"), 180, 19, 0xe0e0e0, false);
-        Component pageText = Component.translatable("gui.chestwise.page", menu.page() + 1, menu.totalPages());
+        Component pageText = menu.targetView()
+            ? Component.translatable("gui.chestwise.page", menu.targetPage() + 1, menu.targetPageCount())
+            : Component.translatable("gui.chestwise.page", menu.page() + 1, menu.totalPages());
         graphics.text(font, pageText, 116, 6, 0x303030, false);
         *///?}
     }
