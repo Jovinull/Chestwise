@@ -33,6 +33,13 @@ Game tests all run in one world at the same time, and a terminal indexes every
 container within its scan radius. Each test therefore has to use an item no other
 test touches, or terminals index one another's chests and the suite turns flaky.
 
+Restock planner unit tests cover satisfied and partial targets, source and
+destination limits, multi-stack quantities, protected slots, exact item identity,
+duplicate/update/remove behavior, independent targets, and item conservation.
+Fabric GameTests exercise the server menu against real nearby chests, including
+partial availability, capacity, protected slots, damaged-item variants,
+independent and concurrent demands, target editing, and distance validation.
+
 On Minecraft 1.20.1, the startup message `Loaded 7 recipes` is not a total of
 seven recipe IDs. The version's `RecipeManager` groups its recipe map by the
 seven recipe types; the GameTest separately asserts that `getRecipeIds()` exposes
@@ -127,6 +134,14 @@ right-click deposited one; closing returned the remainder to the player. A
 double-click on an aggregate withdrew only once. `QUICK_CRAFT` and `PICKUP_ALL`
 are additionally covered by server GameTests that verify their click stages do
 not act as an unintended deposit or withdrawal.
+
+Restock was manually exercised on Minecraft 1.21.1 Fabric. With a target of 64,
+17 torches in the player inventory, and 20 in a nearby chest, it moved only the
+available 20. The target could be edited, removed, and added again, and remained
+saved after Save and Quit followed by reopening the world. With the player
+inventory full, a target of 100 and 64 torches in storage moved only 27 into the
+remaining space of the existing stack; the player reached 64 and the chest kept
+37. Repeating Restock with no remaining player capacity left the chest unchanged.
 
 Quilt client smoke passed on 1.20.1, 1.21.1, and 26.2 with the production Fabric
 artifact: Chestwise discovery, world load, terminal placement/rendering, screen

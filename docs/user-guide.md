@@ -46,11 +46,27 @@ in `config/chestwise-client.properties`; scrolling up over a result withdraws on
 item and scrolling down deposits one exact matching item. The server validates
 every operation.
 
+## Restock targets
+
+Open **Targets**, choose **Add item**, then click an item in your main inventory
+or hotbar. Its target starts at one normal stack. Select a target to edit its
+quantity or remove it; quantities may span multiple stacks. Press **Restock**
+to request deficits from this terminal's nearby physical inventories.
+Restock is best-effort: it takes only available items that fit and processes
+each exact item variant independently. Targets are saved by player UUID in the
+world's Overworld data, so they survive logout, death, dimension changes, and
+server restarts.
+
+Only the 36 main-inventory/hotbar slots are eligible. Protected slots count
+toward a target, but Restock never changes them or inserts into them. Armor,
+offhand, crafting slots, and items inside backpacks are not included. A target
+is capped at the lower of 4,096 items or 36 stacks of that exact variant.
+
 ## Crafting
 
 Use the 3 × 3 grid like a vanilla crafting table. Withdraw ingredients from the
 indexed results, place them in the grid, and take the recipe output. Closing the
 screen returns remaining grid contents through vanilla menu cleanup behavior.
-Chestwise has no built-in recipe browser or autofill. Optional compatible recipe
-viewers can transfer recipes into the terminal's crafting grid; Chestwise does
-not provide industrial autocrafting.
+Chestwise has no built-in recipe browser or recipe autofill. Optional compatible
+recipe viewers can transfer recipes into the terminal's crafting grid; Chestwise
+does not provide industrial autocrafting.

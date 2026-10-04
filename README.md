@@ -29,6 +29,7 @@ dependency.
   aggregate counts and exact totals in tooltips.
 - Search by name, `@namespace`, or `#tag`, with four sorting modes.
 - Server-authoritative withdrawal, deposit matching, deposit all, and quick stack.
+- Persistent per-player Restock targets that replenish deficits from nearby physical storage.
 - Middle-click protection for player inventory slots.
 - Physical item location using coordinates and a short particle marker.
 - Integrated vanilla 3 × 3 crafting grid.
