@@ -269,6 +269,54 @@ public final class ChestwiseGameTests implements FabricGameTest {
     }
 
     //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    //?} else {
+    /*@GameTest(maxTicks = 100)
+    *///?}
+    public void insufficientRecipeTransferDoesNotWithdrawPartialIngredients(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.DIAMOND));
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer player = helper.makeMockServerPlayerInLevel();
+            BlockPos world = terminal.getBlockPos();
+            player.setPos(world.getX() + 0.5, world.getY() + 0.5, world.getZ() + 0.5);
+            player.getInventory().setItem(9, new ItemStack(Items.DIAMOND));
+            StorageTerminalMenu menu = new StorageTerminalMenu(28, player.getInventory(), terminal);
+            menu.getSlot(StorageTerminalMenu.CRAFT_START).set(new ItemStack(Items.GOLD_INGOT));
+
+            // Two diamonds exist, but the requested recipe requires three.
+            menu.fillRecipe(player, RecipeSlotCodec.encode(List.of(
+                List.of("minecraft:diamond"),
+                List.of("minecraft:diamond"),
+                List.of("minecraft:diamond")
+            )));
+
+            helper.assertTrue(menu.getSlot(StorageTerminalMenu.CRAFT_START).getItem().is(Items.GOLD_INGOT),
+                "An insufficient transfer changed the pre-existing crafting grid");
+            helper.assertTrue(menu.getSlot(StorageTerminalMenu.CRAFT_START + 1).getItem().isEmpty()
+                    && menu.getSlot(StorageTerminalMenu.CRAFT_START + 2).getItem().isEmpty(),
+                "An insufficient transfer populated part of the crafting grid");
+            helper.assertTrue(chest.getItem(0).is(Items.DIAMOND) && chest.getItem(0).getCount() == 1,
+                "An insufficient transfer withdrew a partial ingredient from storage");
+            helper.assertTrue(player.getInventory().getItem(9).is(Items.DIAMOND)
+                    && player.getInventory().getItem(9).getCount() == 1,
+                "An insufficient transfer consumed a partial player ingredient");
+            menu.removed(player);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 40)
     //?} else {
     /*@GameTest(maxTicks = 40)
@@ -424,16 +472,20 @@ public final class ChestwiseGameTests implements FabricGameTest {
             player.setPos(world.getX() + 0.5, world.getY() + 0.5, world.getZ() + 0.5);
             player.getInventory().setItem(9, new ItemStack(Items.GOLD_INGOT, 2));
             StorageTerminalMenu menu = new StorageTerminalMenu(26, player.getInventory(), terminal);
+            menu.getSlot(StorageTerminalMenu.CRAFT_START).set(new ItemStack(Items.GOLD_INGOT));
 
             menu.fillRecipe(player, "not-an-item; ;\u0000;,,;");
 
-            helper.assertTrue(menu.getSlot(StorageTerminalMenu.CRAFT_START).getItem().isEmpty(),
-                "Malformed recipe transfer populated the crafting grid");
+            helper.assertTrue(menu.getSlot(StorageTerminalMenu.CRAFT_START).getItem().is(Items.GOLD_INGOT),
+                "Malformed recipe transfer changed an existing crafting input");
             helper.assertTrue(chest.getItem(0).is(Items.COPPER_INGOT) && chest.getItem(0).getCount() == 4,
                 "Malformed recipe transfer changed storage");
             helper.assertTrue(player.getInventory().getItem(9).is(Items.GOLD_INGOT)
                     && player.getInventory().getItem(9).getCount() == 2,
                 "Malformed recipe transfer changed the player inventory");
+            menu.fillRecipe(player, "");
+            helper.assertTrue(menu.getSlot(StorageTerminalMenu.CRAFT_START).getItem().is(Items.GOLD_INGOT),
+                "An empty recipe transfer changed an existing crafting input");
             menu.removed(player);
             helper.succeed();
         });

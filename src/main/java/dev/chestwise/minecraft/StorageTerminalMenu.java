@@ -3,10 +3,13 @@ package dev.chestwise.minecraft;
 import dev.chestwise.core.IndexedItem;
 import dev.chestwise.core.ItemIdentity;
 import dev.chestwise.core.RecipeSlotCodec;
+import dev.chestwise.core.RecipeSlotPlanner;
 import dev.chestwise.core.SortMode;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -575,6 +578,23 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             return;
         }
         List<List<String>> wanted = RecipeSlotCodec.decode(encoded);
+        Map<String, Long> available = new LinkedHashMap<>(terminal.availableItemCounts());
+        Map<String, Long> playerAvailable = new LinkedHashMap<>();
+        Inventory inventory = player.getInventory();
+        for (int slot = 0; slot < Math.min(PLAYER_STORAGE_SLOTS, inventory.getContainerSize()); slot++) {
+            if (!protectedSlots.contains(slot)) {
+                ItemStack stack = inventory.getItem(slot);
+                addAvailable(available, stack);
+                addAvailable(playerAvailable, stack);
+            }
+        }
+        for (int slot = 0; slot < crafting.getContainerSize(); slot++) {
+            addAvailable(available, crafting.getItem(slot));
+        }
+        List<String> plan = RecipeSlotPlanner.plan(wanted, available, playerAvailable).orElse(null);
+        if (plan == null) {
+            return;
+        }
         // Clear first so transferring twice cannot pile ingredients up.
         // Never overwrite a grid stack that could not be returned.  Keeping the
         // existing grid intact is preferable to a partial recipe and, crucially,
@@ -582,14 +602,14 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         if (!returnGridToStorage()) {
             return;
         }
-        for (int slot = 0; slot < RECIPE_SLOTS && slot < wanted.size(); slot++) {
-            List<String> options = wanted.get(slot);
-            if (options.isEmpty()) {
+        for (int slot = 0; slot < RECIPE_SLOTS && slot < plan.size(); slot++) {
+            String itemId = plan.get(slot);
+            if (itemId.isEmpty()) {
                 continue;
             }
-            ItemStack found = takeOneFromInventory(player, options);
+            ItemStack found = takeOneFromInventory(player, List.of(itemId));
             if (found.isEmpty()) {
-                found = terminal.withdrawAnyOf(options, 1);
+                found = terminal.withdrawAnyOf(List.of(itemId), 1);
             }
             if (!found.isEmpty()) {
                 crafting.setItem(slot, found);
@@ -598,6 +618,13 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         player.getInventory().setChanged();
         slotsChanged(crafting);
         refresh();
+    }
+
+    private static void addAvailable(Map<String, Long> available, ItemStack stack) {
+        if (!stack.isEmpty()) {
+            String itemId = ItemStackIdentity.identity(stack).itemId();
+            available.merge(itemId, (long) stack.getCount(), Long::sum);
+        }
     }
 
     /** Moves anything already on the grid back into storage, without discarding a remainder. */

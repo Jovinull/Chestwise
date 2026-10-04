@@ -210,6 +210,23 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
         return ItemSearch.apply(index.snapshot(), SearchQuery.parse(query), sortMode);
     }
 
+    /** Returns fresh physical-storage counts grouped by item id for transfer planning. */
+    public Map<String, Long> availableItemCounts() {
+        for (MinecraftStorageSource source : List.copyOf(sources.values())) {
+            if (source.isValid()) {
+                index.reconcile(source.snapshot());
+            } else {
+                sources.remove(source.sourceId());
+                index.invalidate(source.sourceId());
+            }
+        }
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (IndexedItem indexed : index.snapshot()) {
+            counts.merge(indexed.descriptor().identity().itemId(), indexed.totalCount(), Long::sum);
+        }
+        return Map.copyOf(counts);
+    }
+
     public ItemStack representative(ItemIdentity identity) {
         for (MinecraftStorageSource source : sources.values()) {
             ItemStack stack = source.representative(identity);
