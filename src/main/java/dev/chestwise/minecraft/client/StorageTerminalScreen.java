@@ -368,7 +368,6 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     //? if < 26.2 {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode != KEY_ESCAPE
-            && !minecraft.options.keyInventory.matches(keyCode, scanCode)
             && (search.keyPressed(keyCode, scanCode, modifiers) || search.canConsumeInput())) {
             return true;
         }
@@ -377,7 +376,6 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     //?} else {
     /*public boolean keyPressed(KeyEvent event) {
         if (event.key() != KEY_ESCAPE
-            && !minecraft.options.keyInventory.matches(event)
             && (search.keyPressed(event) || search.canConsumeInput())) {
             return true;
         }
