@@ -20,10 +20,10 @@ also encoded in each artifact name.
   recipe survives closing the screen, all open viewers see the same current
   result, and the grid is returned to surrounding containers when the block is
   broken.
-- Added recipe transfer from JEI and REI, filling the grid from the player's
-  inventory first and from the surrounding containers after that. EMI can bridge
-  to the JEI handler through JEMI, pending runtime certification. All viewers
-  remain optional.
+- Added optional recipe transfer from JEI and REI, filling the grid from the
+  player's inventory first and from surrounding containers after that. EMI
+  transfer and crafting were runtime-tested on Fabric 1.21.1 through JEMI/JEI;
+  Chestwise has no native EMI plugin.
 - Aggregate item counts now draw above the item sprite instead of behind it.
 - The crafting result slot no longer overlaps a crafting input slot, and the
   inventory label is no longer hidden underneath a button.

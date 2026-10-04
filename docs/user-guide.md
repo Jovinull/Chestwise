@@ -51,4 +51,6 @@ every operation.
 Use the 3 × 3 grid like a vanilla crafting table. Withdraw ingredients from the
 indexed results, place them in the grid, and take the recipe output. Closing the
 screen returns remaining grid contents through vanilla menu cleanup behavior.
-Chestwise does not provide recipe autofill or industrial autocrafting.
+Chestwise has no built-in recipe browser or autofill. Optional compatible recipe
+viewers can transfer recipes into the terminal's crafting grid; Chestwise does
+not provide industrial autocrafting.
