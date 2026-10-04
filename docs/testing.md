@@ -24,7 +24,10 @@ index them, withdraw and deposit through the terminal backend, invalidate remove
 containers, resolve a crafting recipe through Minecraft's recipe manager, keep a
 shared crafting grid and result coherent across simultaneously open menus,
 return that grid to storage when the terminal is broken, and fill a recipe from
-the inventory before storage without overwriting an unreturned grid stack.
+the inventory before storage without overwriting an unreturned grid stack. They
+also verify an insufficient recipe transfer does not consume a partial set of
+ingredients or change the pre-existing grid, and that a complete assignment is
+found when ingredient alternatives overlap.
 
 Game tests all run in one world at the same time, and a terminal indexes every
 container within its scan radius. Each test therefore has to use an item no other
@@ -62,14 +65,16 @@ python scripts/quilt_smoke_test.py \
   --artifact versions/1.21.1-fabric/build/libs/chestwise-fabric-1.21.1-0.1.0.jar
 ```
 
-The official compatibility matrix uses Quilt Loader 0.30.0 for Minecraft
-1.20.1, 1.21.1, and 26.2. QSL and QFAPI are not runtime dependencies.
+The dedicated-server compatibility matrix uses Quilt Loader 0.30.0 for Minecraft
+1.20.1, 1.21.1, and 26.2. Client smokes use Quilt Loader 0.30.1. QSL and QFAPI
+are not runtime dependencies.
 
-The production Fabric artifacts were booted on Quilt Loader 0.30.0 on all
-three supported Minecraft lines on 2026-10-02. Chestwise was discovered,
-initialized, and each dedicated server reached its ready marker. This is a
-server-startup compatibility smoke; it does not certify placing the terminal
-or opening its client screen under Quilt.
+On all three supported lines, the production Fabric artifact was discovered by
+Quilt and its dedicated server reached the ready marker. In separate Quilt
+client smokes, a world loaded, the Storage Terminal could be obtained and placed,
+its block rendered, and the screen opened, accepted search text, and closed with
+Escape. These are startup and basic interaction checks, not exhaustive
+cross-mod compatibility tests.
 
 ## Packaged loader smoke tests
 
@@ -86,44 +91,47 @@ certification.
 
 | Viewer | Combination | Evidence |
 | --- | --- | --- |
-| JEI 19.44.0.406 | Minecraft 1.21.1, Fabric | Startup and vanilla oak-log-to-oak-planks transfer/craft certified; occupied-grid, insufficient-input, full-capacity, and remainder cases not certified. |
+| JEI 19.44.0.406 | Minecraft 1.21.1, Fabric | Startup; vanilla transfer/craft; occupied-grid return; full-storage refusal; and insufficient-input refusal certified. Cake remainder behavior is covered by the RecipeManager GameTest, not independently through JEI. |
 | JEI | Other supported loader/version nodes | Compile-tested only. |
-| EMI 1.1.23+1.21.1+fabric + JEI 19.44.0.406 | Minecraft 1.21.1, Fabric | Startup, oak-log-to-planks transfer/craft, occupied-grid return, and clean insufficient-diamond-input failure tested through the JEMI plugin. No native Chestwise EMI plugin. Remainder/full-capacity cases not tested. |
+| EMI 1.1.23+1.21.1+fabric + JEI 19.44.0.406 | Minecraft 1.21.1, Fabric | Startup, oak-log-to-planks transfer/craft, occupied-grid return, and insufficient-input refusal tested through JEMI. No native Chestwise EMI plugin. |
 | REI | Fabric 1.20.1/1.21.1/26.2; Forge 1.20.1; NeoForge 1.20.1/1.21.1/26.2 | Compile-tested only; no runtime transfer certification. |
 | REI | Forge 1.21.1 and 26.2 | No Chestwise REI handler is built for these nodes. |
 
-The JEI runtime transfer test confirms plugin discovery, one ingredient
-withdrawn from a physical chest into the terminal grid, and the resulting
-four-plank craft. Through EMI's JEMI plugin, the same Chestwise transfer handler
-was observed returning an existing crafting-table input, filling the oak-plank
-recipe, and crafting four planks; a diamond-pickaxe transfer with no diamonds
-left the grid and storage unchanged. Remainders, completely full capacity, and
-all JEI transfer edge cases remain untested. During EMI reload the log contained
-duplicate `jei:/...` recipe-ID errors, though the tested transfers completed and
-no Chestwise linkage exception was observed. REI has compile coverage only in
-the listed nodes.
+The JEI runtime checks confirm plugin discovery, a physical-chest ingredient
+withdrawn into the terminal grid, and the resulting four-plank craft. An occupied
+grid was returned before a different transfer; when the chest was full and the
+old grid item could not be returned, the old grid and inventory remained intact.
+After the insufficiency fix, a diamond-pickaxe transfer with only one diamond
+available left that diamond in storage and the grid empty. EMI used the JEMI/JEI
+bridge for the same handler; startup, transfer/craft, occupied-grid return, and
+insufficient-input refusal passed. EMI logged duplicate `jei:/...` IDs during
+recipe baking after JEMI's collection phase; this was an upstream bridge log,
+with no Chestwise exception or failure in the tested transfers. REI remains
+compile-tested only in the listed nodes. Cake-bucket remainders are exercised by
+the vanilla RecipeManager GameTest and were not separately attributed to JEI.
 
 ## Manual client observations
 
-On Minecraft 1.21.1 Fabric, the terminal screen was opened in a real client
-with EMI and JEI installed. The visible search/magnifier, aggregate items,
-crafting inputs/result, player inventory, and action labels were aligned at
-GUI scale Auto and 3; ESC closed the terminal. GUI scale 2 was selected in
-Video Settings, but the terminal screen was not reopened at that scale. The
-inventory key opened the creative inventory after the terminal had been
-closed. This does not certify all GUI scaling, search-key, or tooltip cases.
+Manual client checks on Minecraft 1.21.1 Fabric covered GUI scales Auto, 2, and
+3; search typing/filtering, backspace and clear; ESC; tooltips for storage,
+crafting inputs and result; visible counters/labels; and clicks on storage,
+crafting, result, inventory, hotbar, and sort controls. The inventory key closes
+the screen after search focus leaves the text field. Typing `e` while search is
+focused no longer closes the screen; Escape still closes it.
 
-The full-stack carried-item deposit path was observed in an earlier manual
-run. Partial-capacity, full-storage, right-click, double-click, drag/quick-craft,
-and close-with-carried-stack cases remain untested in a real client. A Fabric
-GameTest now drives `PICKUP_ALL` with a same-variant cursor stack and verifies
-that it cannot withdraw more items; the existing GameTest also verifies that
-`QUICK_CRAFT` leaves the carried stack unchanged. These server-side click
-regressions do not replace the uncompleted manual capacity/drag checks.
+Carried-stack deposit was checked with a full stack, a destination with only
+partial capacity, a full destination, right-click, and closing with a remainder
+on the cursor. Observed counts were conserved: a 64-stack with 10 spaces left
+inserted 10 and preserved 54; a full destination left the carried stack intact;
+right-click deposited one; closing returned the remainder to the player. A
+double-click on an aggregate withdrew only once. `QUICK_CRAFT` and `PICKUP_ALL`
+are additionally covered by server GameTests that verify their click stages do
+not act as an unintended deposit or withdrawal.
 
-Quilt 0.30.0 server startup passed for all three Fabric artifacts (see the
-dedicated-server smoke evidence above). No Quilt client was launched, so client
-screen/render compatibility remains unverified for 1.20.1, 1.21.1, and 26.2.
+Quilt client smoke passed on 1.20.1, 1.21.1, and 26.2 with the production Fabric
+artifact: Chestwise discovery, world load, terminal placement/rendering, screen
+open, search input, and Escape close. Dedicated-server Quilt checks are listed
+separately above.
 
 ## Release evidence
 

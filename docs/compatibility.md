@@ -32,8 +32,8 @@ in the chests.
 
 | Viewer | Compile coverage | Runtime startup | Functional transfer | Integration path |
 | --- | --- | --- | --- | --- |
-| JEI | All nine loader/version nodes | 1.21.1 Fabric, JEI 19.44.0.406: PASS | 1.21.1 Fabric: vanilla oak-log-to-oak-planks transfer and craft PASS; edge cases not certified. Other nodes compile-tested only. | JEI `IRecipeTransferHandler`; Fabric discovers it through `jei_mod_plugin`. |
-| EMI | No EMI API/plugin is compiled | 1.21.1 Fabric, EMI 1.1.23+1.21.1+fabric + JEI 19.44.0.406: PASS | Oak-log-to-planks transfer/craft PASS; occupied grid returned and replaced; diamond-pickaxe transfer with missing ingredients left grid/storage unchanged. Remainders/full-capacity not tested. | Indirect JEMI/JEI compatibility (`dev.emi.emi.jemi.JemiPlugin`); no native Chestwise EMI plugin. |
+| JEI | All nine loader/version nodes | 1.21.1 Fabric, JEI 19.44.0.406: PASS | 1.21.1 Fabric: vanilla transfer/craft, occupied-grid return, full-storage refusal, and insufficient-input refusal PASS. Cake remainders are covered by the vanilla `RecipeManager` GameTest, not a viewer-specific transfer case. Other nodes compile-tested only. | JEI `IRecipeTransferHandler`; Fabric discovers it through `jei_mod_plugin`. |
+| EMI | No EMI API/plugin is compiled | 1.21.1 Fabric, EMI 1.1.23+1.21.1+fabric + JEI 19.44.0.406: PASS | Oak-log-to-planks transfer/craft, occupied-grid return, and insufficient-input refusal PASS through JEMI. No native Chestwise EMI plugin. | Indirect JEMI/JEI compatibility (`dev.emi.emi.jemi.JemiPlugin`). |
 | REI | Fabric 1.20.1/1.21.1/26.2; Forge 1.20.1; NeoForge 1.20.1/1.21.1/26.2. | Not runtime-tested | Not runtime-tested; compile-tested only | REI `TransferHandler`. |
 
 Chestwise does not compile its REI handler for Forge 1.21.1 or 26.2. Those
@@ -76,12 +76,23 @@ input counts greater than one, or non-item ingredients. This limitation applies
 to viewer transfer only; normal terminal crafting is resolved server-side by
 Minecraft's `RecipeManager` and retains vanilla ingredient semantics.
 
-The tested EMI+JEI development client displayed EMI's warning counter and its
-log recorded duplicate `jei:/...` recipe-ID errors during reload. No
-`ClassCastException`, linkage error, or Chestwise exception occurred, and the
-tested transfers above completed. Treat this as a runtime warning of the tested
-EMI/JEMI/JEI combination, not as certification that every imported recipe is
-unique.
+The tested EMI+JEI development client displayed EMI's warning counter. During
+EMI recipe baking, EMI logged duplicate `jei:/...` IDs after JEMI collected JEI
+recipes. This came from the EMI/JEMI/JEI compatibility path, not Chestwise; no
+Chestwise exception, class-cast, or linkage error occurred, and the tested
+transfers completed. The duplicate-ID report may mean an ambiguous imported
+recipe is collapsed by EMI; it does not establish that every imported recipe is
+unique or transferable.
+
+## Quilt client and server
+
+The production Fabric artifacts passed dedicated-server startup on Quilt Loader
+0.30.0 for Minecraft 1.20.1, 1.21.1, and 26.2. Client smoke tests then used the
+same Fabric artifacts on Quilt Loader 0.30.1 for all three versions: Chestwise
+loaded, a world opened, the terminal was obtained and placed, its model rendered,
+the screen opened, search accepted input, and Escape closed it. These are client
+and server compatibility smokes, not a claim that every Quilt mod combination
+has been tested.
 
 Chestwise never opens item-contained inventories recursively, force-loads a
 chunk, accesses another dimension, or treats player backpacks as terminal
