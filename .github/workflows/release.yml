@@ -38,7 +38,7 @@ jobs:
           --stacktrace
       - name: Audit and assemble release files
         run: python3 scripts/audit_artifacts.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: chestwise-release
           path: build/release/*
