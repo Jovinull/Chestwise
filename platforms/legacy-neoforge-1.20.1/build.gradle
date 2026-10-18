@@ -6,6 +6,12 @@ plugins {
 
 group = 'dev.chestwise'
 version = rootProject.providers.gradleProperty('mod.version').get()
+def dependencyPins = new Properties()
+rootProject.file('versions/dependencies/1.20.1.properties').withInputStream { dependencyPins.load(it) }
+def fabricLoaderVersion = dependencyPins.getProperty('loader_version')
+if (!fabricLoaderVersion) {
+    throw new GradleException('loader_version missing from versions/dependencies/1.20.1.properties')
+}
 
 base {
     archivesName = 'chestwise-neoforge-1.20.1'
@@ -84,9 +90,22 @@ tasks.named('processResources') {
 }
 
 repositories {
-    maven { url = 'https://maven.blamejared.com' }
-    maven { url = 'https://maven.shedaniel.me' }
-    maven { url = 'https://maven.fabricmc.net/' }
+    mavenCentral()
+    maven {
+        url = 'https://maven.blamejared.com'
+        content { includeGroup 'mezz.jei' }
+    }
+    maven {
+        url = 'https://maven.shedaniel.me'
+        content {
+            includeGroupByRegex 'me\\.shedaniel(\\..*)?'
+            includeGroup 'dev.architectury'
+        }
+    }
+    maven {
+        url = 'https://maven.fabricmc.net/'
+        content { includeGroupByRegex 'net\\.fabricmc(\\..*)?' }
+    }
 }
 
 dependencies {
@@ -95,7 +114,7 @@ dependencies {
     // REI's Forge jar is annotated with Fabric's @Environment; javac needs those
     // annotation classes on the path to read it without warning.
     compileOnly "me.shedaniel:RoughlyEnoughItems-api-forge:12.1.785"
-    compileOnly 'net.fabricmc:fabric-loader:0.16.9'
+    compileOnly "net.fabricmc:fabric-loader:${fabricLoaderVersion}"
     testImplementation platform('org.junit:junit-bom:5.13.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

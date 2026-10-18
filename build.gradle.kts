@@ -23,11 +23,33 @@ val chestwiseJei: String = chestwisePins.getProperty("jei_version")
     ?: error("jei_version missing for $chestwiseMinecraft")
 val chestwiseRei: String = chestwisePins.getProperty("rei_version")
     ?: error("rei_version missing for $chestwiseMinecraft")
+val chestwiseFabricLoader: String = chestwisePins.getProperty("loader_version")
+    ?: error("loader_version missing for $chestwiseMinecraft")
+val chestwiseUsesRei = chestwiseLoader == "fabric" || chestwiseLoader == "neoforge" ||
+    (chestwiseLoader == "forge" && chestwiseMinecraft == "1.20.1")
 
 repositories {
-    maven("https://maven.blamejared.com")
-    maven("https://maven.shedaniel.me")
-    maven("https://maven.fabricmc.net/")
+    mavenCentral()
+    maven("https://maven.blamejared.com") {
+        content {
+            includeGroup("mezz.jei")
+        }
+    }
+    if (chestwiseUsesRei) {
+        maven("https://maven.shedaniel.me") {
+            content {
+                includeGroupByRegex("me\\.shedaniel(\\..*)?")
+                includeGroup("dev.architectury")
+            }
+        }
+    }
+    if (chestwiseLoader == "fabric" || chestwiseUsesRei) {
+        maven("https://maven.fabricmc.net/") {
+            content {
+                includeGroupByRegex("net\\.fabricmc(\\..*)?")
+            }
+        }
+    }
 }
 
 dependencies {
@@ -49,11 +71,11 @@ dependencies {
         // that those loaders use to discover the plugin.
         "neoforge" -> {
             compileOnly("me.shedaniel:RoughlyEnoughItems-api-neoforge:$chestwiseRei")
-            compileOnly("net.fabricmc:fabric-loader:0.16.9")
+            compileOnly("net.fabricmc:fabric-loader:$chestwiseFabricLoader")
         }
         "forge" -> if (chestwiseMinecraft == "1.20.1") {
             compileOnly("me.shedaniel:RoughlyEnoughItems-api-forge:$chestwiseRei")
-            compileOnly("net.fabricmc:fabric-loader:0.16.9")
+            compileOnly("net.fabricmc:fabric-loader:$chestwiseFabricLoader")
         }
     }
     testImplementation(platform("org.junit:junit-bom:5.13.4"))

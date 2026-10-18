@@ -2,6 +2,8 @@ pluginManagement {
     repositories {
         mavenCentral()
         gradlePluginPortal()
+        // Keep plugin repositories broad: Loom plugin transitives include Mojang
+        // and MCP coordinates that do not share the plugin marker's group.
         maven("https://maven.kikugie.dev/releases")
         maven("https://maven.kikugie.dev/snapshots")
         maven("https://maven.fabricmc.net/")
@@ -14,7 +16,7 @@ pluginManagement {
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
     id("gg.meza.stonecraft") version "1.10.14"
-    id("dev.kikugie.stonecutter") version "0.9.7"
+    id("dev.kikugie.stonecutter") version "0.9.8"
 }
 
 stonecutter {
