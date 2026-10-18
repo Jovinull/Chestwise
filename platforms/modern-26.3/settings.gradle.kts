@@ -30,8 +30,15 @@ stonecutter {
     create(rootProject)
 }
 
-project(":26.3-fabric").projectDir = file("../../versions/26.3-fabric")
-project(":26.3-neoforge").projectDir = file("../../versions/26.3-neoforge")
+val fabricNodeDirectory = file("../../versions/26.3-fabric").apply {
+    check(isDirectory || mkdirs()) { "Could not create Minecraft 26.3 Fabric node directory: $this" }
+}
+val neoForgeNodeDirectory = file("../../versions/26.3-neoforge").apply {
+    check(isDirectory || mkdirs()) { "Could not create Minecraft 26.3 NeoForge node directory: $this" }
+}
+
+project(":26.3-fabric").projectDir = fabricNodeDirectory
+project(":26.3-neoforge").projectDir = neoForgeNodeDirectory
 
 include("forge-26.3")
 project(":forge-26.3").projectDir = file("../forge-26.3")
