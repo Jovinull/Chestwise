@@ -14,6 +14,8 @@ This note records the maintenance branch cut from `main` on 2026-10-18. It does 
 
 Those are the baseline results before the maintenance edits. The maintenance branch subsequently repeated a clean build of all nine variants and the three Fabric GameTest tasks; all passed. Its final local artifact audit also passed 9/9. Local dependency resolution for that final matrix used the already populated Gradle cache because the local Shedaniel endpoint timed out during a direct online attempt; the pushed branch workflows are the online-resolution check.
 
+The maintenance branch's online verification at `f434ef0788c075444b837697e171a1f3acf9f998` completed successfully: [Build and test run 39130546536](https://github.com/Jovinull/Chestwise/actions/runs/39130546536) passed 16/16 jobs, and [Release run 39130549206](https://github.com/Jovinull/Chestwise/actions/runs/39130549206) passed its package job, nine loader server smokes, and three Quilt server smokes (13 jobs passed; tag-only publishing was skipped). The package job built all nine variants online, ran all three Fabric GameTest suites (24/24, 24/24, 25/25), and audited all nine production jars.
+
 ## Dependabot resolver failure (separate from PR build checks)
 
 The actual [Dependabot Updates run 38625457933](https://github.com/Jovinull/Chestwise/actions/runs/38625457933), job `116063354157`, ran on 2026-10-14 against the starting `main` commit. The updater summary called two failures `private_source_authentication_failure`, for `org.junit:junit-bom` and `net.fabricmc:fabric-loader`, and attributed both to `https://maven.blamejared.com`.
@@ -51,7 +53,7 @@ The latest Stonecraft version observed on the Gradle Plugin Portal was 1.14.5 (p
 
 ## Dependabot PR disposition
 
-These PRs were evaluated against the current starting tree; stale PR check results are not a substitute for that evaluation.
+These PRs were evaluated against the current starting tree; stale PR check results are not a substitute for that evaluation. The current branch workflows subsequently passed on the maintenance ref. The Dependabot update job itself was not rerun: GitHub's updater operates against the default branch, which this maintenance work intentionally does not modify.
 
 | PR | Disposition | Follow-up |
 | --- | --- | --- |
