@@ -58,15 +58,10 @@ dependencies {
     compileOnly("mezz.jei:jei-$chestwiseMinecraft-common-api:$chestwiseJei")
     // Chestwise currently compiles the REI plugin for Forge only on 1.20.1;
     // later Forge nodes omit its API dependency and guard the plugin source out.
-    // Mapping differs by artifact: the Forge-family jars are Mojang-mapped, and so
-    // is the loader-agnostic one from 26.2 onwards, but the Fabric jars on the
-    // older lines are intermediary and have to go through Loom's remapping.
+    // Mapping differs by artifact: Forge-family jars are Mojang-mapped, while
+    // Fabric jars on the supported legacy lines use intermediary mappings.
     when (chestwiseLoader) {
-        "fabric" -> if (chestwiseMinecraft == "26.2") {
-            compileOnly("me.shedaniel:RoughlyEnoughItems-api:$chestwiseRei")
-        } else {
-            "modCompileOnly"("me.shedaniel:RoughlyEnoughItems-api-fabric:$chestwiseRei")
-        }
+        "fabric" -> "modCompileOnly"("me.shedaniel:RoughlyEnoughItems-api-fabric:$chestwiseRei")
         // The Forge-family artifacts also carry the @REIPluginClient annotation
         // that those loaders use to discover the plugin.
         "neoforge" -> {
@@ -104,9 +99,6 @@ tasks.withType<JavaCompile>().configureEach {
 val chestwisePackMetadata = when {
     project.name.startsWith("1.20.1-") -> "\"pack_format\": 15"
     project.name.startsWith("1.21.1-") -> "\"pack_format\": 48"
-    // 26.2 has distinct resource (88.0) and data (107.1) formats. A mod JAR is both
-    // pack types, so its declared supported range must contain both current formats.
-    project.name.startsWith("26.2-") -> "\"min_format\": 88,\n    \"max_format\": 107"
     else -> error("No resource-pack format mapped for ${project.name}")
 }
 
@@ -124,31 +116,6 @@ tasks.processResources {
             """.trimIndent() + "\n"
         )
 
-        if (project.name.startsWith("26.2-")) {
-            val recipe = layout.buildDirectory.file("resources/main/data/chestwise/recipe/storage_terminal.json").get().asFile
-            recipe.parentFile.mkdirs()
-            recipe.writeText(
-                """{
-                  "type": "minecraft:crafting_shaped",
-                  "pattern": [
-                    "IPI",
-                    "RCR",
-                    "IPI"
-                  ],
-                  "key": {
-                    "I": "minecraft:iron_ingot",
-                    "P": "minecraft:glass_pane",
-                    "R": "minecraft:redstone",
-                    "C": "minecraft:crafting_table"
-                  },
-                  "result": {
-                    "id": "chestwise:storage_terminal",
-                    "count": 1
-                  }
-                }
-                """.trimIndent() + "\n"
-            )
-        }
     }
 }
 

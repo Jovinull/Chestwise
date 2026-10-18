@@ -19,6 +19,6 @@ public final class Forge26Entrypoint {
         ChestwiseContent.configure(ChestwiseConfig.load(FMLPaths.CONFIGDIR.get().resolve("chestwise-server.properties")));
         ChestwiseContent.registerForge(context.getModBusGroup());
         ChestwiseNetworking.registerServer();
-        LOGGER.info("Chestwise {} initializing on Forge 26.2", BuildInfo.VERSION);
+        LOGGER.info("Chestwise {} initializing on Forge 26.3", BuildInfo.VERSION);
     }
 }

@@ -1,14 +1,21 @@
+import java.util.Properties
+
 plugins {
     id 'java-library'
     id 'jacoco'
-    id 'net.minecraftforge.gradle' version '7.0.35'
+    id 'net.minecraftforge.gradle' version '7.0.40'
 }
 
 group = 'dev.chestwise'
 version = rootProject.providers.gradleProperty('mod.version').get()
 
+def repositoryRoot = rootProject.file('../..')
+def generatedRoot = new File(repositoryRoot, 'versions/26.3-neoforge/build/generated/stonecutter/main/java')
+def pins = new Properties()
+    new File(repositoryRoot, 'versions/dependencies/26.3.properties').withInputStream(pins.&load)
+
 base {
-    archivesName = 'chestwise-forge-26.2'
+    archivesName = 'chestwise-forge-26.3'
 }
 
 java {
@@ -23,13 +30,21 @@ minecraft {
             systemProperty 'eventbus.api.strictRuntimeChecks', 'true'
             systemProperty 'forge.enabledGameTestNamespaces', 'chestwise'
         }
-        register('client')
-        register('server') { args '--nogui' }
-        register('gameTestServer')
+        register('client') {
+            mods { chestwise { source sourceSets.main } }
+        }
+        register('server') {
+            args '--nogui'
+            mods { chestwise { source sourceSets.main } }
+        }
+        register('gameTestServer') {
+            mods { chestwise { source sourceSets.main } }
+        }
     }
 }
 
 repositories {
+    mavenCentral()
     maven {
         url = 'https://maven.blamejared.com'
         content { includeGroup 'mezz.jei' }
@@ -37,13 +52,12 @@ repositories {
     minecraft.mavenizer(it)
     maven fg.forgeMaven
     maven fg.minecraftLibsMaven
-    mavenCentral()
 }
 
 dependencies {
-    // compileOnly: the mod must load with JEI absent.
-    compileOnly "mezz.jei:jei-26.2-common-api:30.27.0.189"
-    implementation minecraft.dependency('net.minecraftforge:forge:26.2-65.1.2')
+    // JEI is compile-only; Forge 26.3 does not currently have a verified JEI runtime artifact.
+    compileOnly "mezz.jei:jei-26.3-common-api:${pins.getProperty('jei_version')}"
+    implementation minecraft.dependency("net.minecraftforge:forge:${pins.getProperty('forge_version')}")
     testImplementation platform('org.junit:junit-bom:5.13.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -52,19 +66,19 @@ dependencies {
 sourceSets {
     main {
         java {
-            srcDirs rootProject.file('versions/26.2-neoforge/build/generated/stonecutter/main/java'), project.file('src/main/java')
+            srcDirs generatedRoot, project.file('src/main/java')
         }
-        resources.srcDirs project.file('src/main/resources'), rootProject.file('src/main/resources')
+        resources.srcDirs project.file('src/main/resources'), new File(repositoryRoot, 'src/main/resources')
     }
     test {
-        java.srcDir rootProject.file('src/test/java')
+        java.srcDir new File(repositoryRoot, 'src/test/java')
     }
 }
 
 tasks.named('compileJava') {
-    dependsOn ':26.2-neoforge:stonecutterGenerate'
+    dependsOn ':26.3-neoforge:stonecutterGenerate'
     source = files(
-        fileTree(rootProject.file('versions/26.2-neoforge/build/generated/stonecutter/main/java')) {
+        fileTree(generatedRoot) {
             exclude 'dev/chestwise/Chestwise.java'
             exclude 'dev/chestwise/minecraft/ChestwiseContent.java'
             exclude 'dev/chestwise/minecraft/LoadedContainerDiscovery.java'
@@ -79,10 +93,10 @@ tasks.named('compileJava') {
 }
 
 tasks.named('sourcesJar') {
-    dependsOn ':26.2-neoforge:stonecutterGenerate'
+    dependsOn ':26.3-neoforge:stonecutterGenerate'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     eachFile { details ->
-        def generated = rootProject.file('versions/26.2-neoforge/build/generated/stonecutter/main/java').toPath()
+        def generated = generatedRoot.toPath()
         def file = details.file.toPath()
         if (file.startsWith(generated) && (
             details.path == 'dev/chestwise/Chestwise.java' ||
@@ -103,18 +117,15 @@ tasks.named('processResources') {
     exclude 'fabric.mod.json', 'META-INF/neoforge.mods.toml'
     doLast {
         def output = destinationDir
-        def pack = new File(output, 'pack.mcmeta')
-        pack.text = '''{
+        new File(output, 'pack.mcmeta').text = '''{
   "pack": {
     "description": "Chestwise resources",
-    "min_format": 88,
-    "max_format": 107
+    "min_format": 97,
+    "max_format": 121
   }
 }
 '''
-        def recipe = new File(output, 'data/chestwise/recipe/storage_terminal.json')
-        recipe.parentFile.mkdirs()
-        recipe.text = '''{
+        new File(output, 'data/chestwise/recipe/storage_terminal.json').text = '''{
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "IPI",
@@ -150,7 +161,7 @@ jar {
     manifest.attributes([
         'Specification-Title': 'Chestwise',
         'Specification-Version': project.version,
-        'Implementation-Title': 'Chestwise Forge 26.2',
+        'Implementation-Title': 'Chestwise Forge 26.3',
         'Implementation-Version': project.version
     ])
 }

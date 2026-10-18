@@ -27,8 +27,7 @@ import net.minecraft.world.inventory.ClickType;
 *///?}
 
 public final class StorageTerminalScreen extends AbstractContainerScreen<StorageTerminalMenu> {
-    /** GLFW escape key. A focused search box reports canConsumeInput() for every
-     *  key, which swallowed the close and left the mouse as the only way out. */
+    /** GLFW Escape key used by the legacy key-event branch. */
     private static final int KEY_ESCAPE = 256;
     /** The one active 16x16 search glyph. */
     //? if < 26.2 {
@@ -506,7 +505,7 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     }
     //?} else {
     /*public boolean keyPressed(KeyEvent event) {
-        if (event.key() != KEY_ESCAPE
+        if (!event.isEscape()
             && (search.keyPressed(event) || search.canConsumeInput())) {
             return true;
         }

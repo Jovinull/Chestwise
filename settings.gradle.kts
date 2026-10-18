@@ -29,7 +29,6 @@ stonecutter {
 
         minecraft("1.20.1", "fabric", "forge")
         minecraft("1.21.1", "fabric", "forge", "neoforge")
-        minecraft("26.2", "fabric", "neoforge")
 
         vcsVersion = "1.20.1-fabric"
     }
@@ -38,7 +37,5 @@ stonecutter {
 
 include("legacy-neoforge-1.20.1")
 project(":legacy-neoforge-1.20.1").projectDir = file("platforms/legacy-neoforge-1.20.1")
-include("forge-26.2")
-project(":forge-26.2").projectDir = file("platforms/forge-26.2")
 
 rootProject.name = "chestwise"

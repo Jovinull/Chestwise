@@ -30,41 +30,41 @@ jobs:
           # Stonecutter configures all Minecraft nodes in one Gradle invocation;
           # run Gradle on 25 while per-node Java toolchains target each game line.
           - name: Fabric 1.20.1
-            task: :1.20.1-fabric:build
+            task: ":1.20.1-fabric:build"
             java: 25
             jar: versions/1.20.1-fabric/build/libs/chestwise-fabric-1.20.1-0.1.0.jar
           - name: Forge 1.20.1
-            task: :1.20.1-forge:build
+            task: ":1.20.1-forge:build"
             java: 25
             jar: versions/1.20.1-forge/build/libs/chestwise-forge-1.20.1-0.1.0.jar
           - name: NeoForge 1.20.1
-            task: :legacy-neoforge-1.20.1:build
+            task: ":legacy-neoforge-1.20.1:build"
             java: 25
             jar: platforms/legacy-neoforge-1.20.1/build/libs/chestwise-neoforge-1.20.1-0.1.0.jar
           - name: Fabric 1.21.1
-            task: :1.21.1-fabric:build
+            task: ":1.21.1-fabric:build"
             java: 25
             jar: versions/1.21.1-fabric/build/libs/chestwise-fabric-1.21.1-0.1.0.jar
           - name: Forge 1.21.1
-            task: :1.21.1-forge:build
+            task: ":1.21.1-forge:build"
             java: 25
             jar: versions/1.21.1-forge/build/libs/chestwise-forge-1.21.1-0.1.0.jar
           - name: NeoForge 1.21.1
-            task: :1.21.1-neoforge:build
+            task: ":1.21.1-neoforge:build"
             java: 25
             jar: versions/1.21.1-neoforge/build/libs/chestwise-neoforge-1.21.1-0.1.0.jar
-          - name: Fabric 26.2
-            task: :26.2-fabric:build
+          - name: Fabric 26.3
+            task: "-p platforms/modern-26.3 :26.3-fabric:build"
             java: 25
-            jar: versions/26.2-fabric/build/libs/chestwise-fabric-26.2-0.1.0.jar
-          - name: Forge 26.2
-            task: :forge-26.2:build
+            jar: versions/26.3-fabric/build/libs/chestwise-fabric-26.3-0.1.0.jar
+          - name: Forge 26.3
+            task: "-p platforms/modern-26.3 :forge-26.3:build"
             java: 25
-            jar: platforms/forge-26.2/build/libs/chestwise-forge-26.2-0.1.0.jar
-          - name: NeoForge 26.2
-            task: :26.2-neoforge:build
+            jar: platforms/forge-26.3/build/libs/chestwise-forge-26.3-0.1.0.jar
+          - name: NeoForge 26.3
+            task: "-p platforms/modern-26.3 :26.3-neoforge:build"
             java: 25
-            jar: versions/26.2-neoforge/build/libs/chestwise-neoforge-26.2-0.1.0.jar
+            jar: versions/26.3-neoforge/build/libs/chestwise-neoforge-26.3-0.1.0.jar
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -91,10 +91,13 @@ jobs:
         include:
           - minecraft: 1.20.1
             java: 25
+            task: ":1.20.1-fabric:runGameTestServer"
           - minecraft: 1.21.1
             java: 25
-          - minecraft: 26.2
+            task: ":1.21.1-fabric:runGameTestServer"
+          - minecraft: 26.3
             java: 25
+            task: "-p platforms/modern-26.3 :26.3-fabric:runGameTestServer"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -103,7 +106,7 @@ jobs:
           java-version: ${{ matrix.java }}
       - uses: gradle/actions/setup-gradle@v6
       - name: Run server game tests
-        run: ./gradlew :${{ matrix.minecraft }}-fabric:runGameTestServer --stacktrace
+        run: ./gradlew ${{ matrix.task }} --stacktrace
 
   quilt:
     name: Quilt ${{ matrix.minecraft }}
@@ -117,14 +120,23 @@ jobs:
             java: 25
             runtime_java: 17
             fabric_api: 0.92.11+1.20.1
+            quilt_loader: 0.30.0
+            build_task: ":1.20.1-fabric:build"
+            artifact: versions/1.20.1-fabric/build/libs/chestwise-fabric-1.20.1-0.1.0.jar
           - minecraft: 1.21.1
             java: 25
             runtime_java: 21
             fabric_api: 0.116.15+1.21.1
-          - minecraft: 26.2
+            quilt_loader: 0.30.0
+            build_task: ":1.21.1-fabric:build"
+            artifact: versions/1.21.1-fabric/build/libs/chestwise-fabric-1.21.1-0.1.0.jar
+          - minecraft: 26.3
             java: 25
             runtime_java: 25
-            fabric_api: 0.158.0+26.2
+            fabric_api: 0.162.0+26.3
+            quilt_loader: 0.30.1
+            build_task: "-p platforms/modern-26.3 :26.3-fabric:build"
+            artifact: versions/26.3-fabric/build/libs/chestwise-fabric-26.3-0.1.0.jar
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -133,7 +145,7 @@ jobs:
           java-version: ${{ matrix.java }}
       - uses: gradle/actions/setup-gradle@v6
       - name: Package Fabric artifact
-        run: ./gradlew :${{ matrix.minecraft }}-fabric:build --stacktrace
+        run: ./gradlew ${{ matrix.build_task }} --stacktrace
       - name: Set up Minecraft runtime Java
         uses: actions/setup-java@v6
         with:
@@ -143,5 +155,6 @@ jobs:
         run: >-
           python3 scripts/quilt_smoke_test.py
           --minecraft ${{ matrix.minecraft }}
+          --loader ${{ matrix.quilt_loader }}
           --fabric-api ${{ matrix.fabric_api }}
-          --artifact versions/${{ matrix.minecraft }}-fabric/build/libs/chestwise-fabric-${{ matrix.minecraft }}-0.1.0.jar
+          --artifact ${{ matrix.artifact }}

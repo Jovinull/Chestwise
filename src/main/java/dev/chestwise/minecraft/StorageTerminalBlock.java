@@ -1,6 +1,6 @@
 package dev.chestwise.minecraft;
 
-//? if > 1.20.1 {
+//? if > 1.20.1 && < 26.3 {
 /*import com.mojang.serialization.MapCodec;
 *///?}
 import net.minecraft.core.BlockPos;
@@ -42,7 +42,7 @@ public final class StorageTerminalBlock extends BaseEntityBlock {
     private static final VoxelShape SHAPE_SOUTH = Shapes.or(DESK, SHELF_SOUTH);
     private static final VoxelShape SHAPE_WEST = Shapes.or(DESK, SHELF_WEST);
 
-    //? if > 1.20.1 {
+    //? if > 1.20.1 && < 26.3 {
     /*private static final MapCodec<StorageTerminalBlock> CODEC = simpleCodec(StorageTerminalBlock::new);
 
     @Override

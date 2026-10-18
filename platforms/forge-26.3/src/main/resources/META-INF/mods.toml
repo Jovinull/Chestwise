@@ -1,5 +1,5 @@
 modLoader = "javafml"
-loaderVersion = "[65,)"
+loaderVersion = "[66,)"
 license = "MIT"
 issueTrackerURL = "https://github.com/Jovinull/Chestwise/issues"
 
@@ -14,13 +14,13 @@ description = '''Your storage already is the network. Search, move, craft, and o
 [[dependencies.chestwise]]
 modId = "forge"
 mandatory = true
-versionRange = "[65,)"
+versionRange = "[66,)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.chestwise]]
 modId = "minecraft"
 mandatory = true
-versionRange = "[26.2,26.3)"
+versionRange = "[26.3,26.4)"
 ordering = "NONE"
 side = "BOTH"

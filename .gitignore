@@ -13,8 +13,13 @@ versions/*/build/
 versions/*/run/
 versions/*/runs/
 versions/*/logs/
+versions/*/.cache/
+versions/*/config/
 platforms/*/server-test/
 **/server-test/
+platforms/modern-26.3/src/
+platforms/modern-26.3/.gradle/
+platforms/modern-26.3/build/
 
 # ides
 .idea/

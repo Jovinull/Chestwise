@@ -18,7 +18,7 @@ import net.minecraftforge.eventbus.api.bus.BusGroup;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
 
-/** Forge 26.2 registry bridge. All gameplay types remain loader-neutral. */
+/** Forge 26.3 registry bridge. All gameplay types remain loader-neutral. */
 public final class ChestwiseContent {
     public static ChestwiseConfig CONFIG = ChestwiseConfig.DEFAULT;
     public static StorageTerminalBlock STORAGE_TERMINAL;
@@ -77,8 +77,7 @@ public final class ChestwiseContent {
     }
 
     private static BlockBehaviour.Properties terminalProperties() {
-        // noOcclusion: the terminal is a desk, not a full cube, so neighbouring
-        // faces must not be culled against it.
+        // noOcclusion: the terminal is a desk, not a full cube, so neighbouring faces must not be culled.
         return BlockBehaviour.Properties.ofFullCopy(Blocks.BARREL).strength(2.5F).noOcclusion();
     }
 }

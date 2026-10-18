@@ -12,7 +12,6 @@ import net.minecraftforge.network.SimpleChannel;
 
 /** Forge network bridge. The packet carries intent only, never a mutation plan. */
 public final class ChestwiseNetworking {
-    /** Nine slots of comma-separated item ids need far more room than a search box. */
     private static final int MAX_PAYLOAD = 1024;
     private static final int KIND_SEARCH = 0;
     private static final int KIND_RECIPE = 1;
@@ -34,7 +33,7 @@ public final class ChestwiseNetworking {
 
     public static void registerServer() {
         CHANNEL.play().serverbound()
-            .addMain(TerminalIntent.class, INTENT_CODEC, ChestwiseNetworking::handleSearch)
+            .addMain(TerminalIntent.class, INTENT_CODEC, ChestwiseNetworking::handleIntent)
             .build();
     }
 
@@ -42,7 +41,6 @@ public final class ChestwiseNetworking {
         send(KIND_SEARCH, query);
     }
 
-    /** Asks the server to lay a recipe out on the terminal's crafting grid. */
     public static void sendRecipe(String encodedSlots) {
         send(KIND_RECIPE, encodedSlots);
     }
@@ -57,7 +55,7 @@ public final class ChestwiseNetworking {
         }
         if (kind == KIND_RECIPE) {
             menu.fillRecipe(player, payload);
-        } else {
+        } else if (kind == KIND_SEARCH) {
             menu.updateQuery(payload);
         }
     }
@@ -68,11 +66,11 @@ public final class ChestwiseNetworking {
 
     private record TerminalIntent(int kind, String payload) {
         private TerminalIntent {
-            payload = payload.length() > MAX_PAYLOAD ? payload.substring(0, MAX_PAYLOAD) : payload;
+            payload = clamp(payload);
         }
     }
 
-    private static void handleSearch(TerminalIntent intent, CustomPayloadEvent.Context context) {
+    private static void handleIntent(TerminalIntent intent, CustomPayloadEvent.Context context) {
         if (context.getSender() != null) {
             applyIntent(context.getSender(), intent.kind, intent.payload);
         }

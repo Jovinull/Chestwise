@@ -507,9 +507,17 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         }
         if (quickMove) {
             if (!player.getInventory().add(extracted)) {
+                //? if < 26.3 {
                 player.drop(extracted, false);
+                //?} else {
+                /*player.drop(extracted, false, net.minecraft.util.Prediction.SERVER_ONLY);
+                *///?}
             } else if (!extracted.isEmpty()) {
+                //? if < 26.3 {
                 player.drop(extracted, false);
+                //?} else {
+                /*player.drop(extracted, false, net.minecraft.util.Prediction.SERVER_ONLY);
+                *///?}
             }
         } else if (getCarried().isEmpty()) {
             setCarried(extracted);
@@ -712,7 +720,11 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         }
         ItemStack extracted = terminal.withdraw(identity, 1);
         if (!extracted.isEmpty() && !player.getInventory().add(extracted)) {
+            //? if < 26.3 {
             player.drop(extracted, false);
+            //?} else {
+            /*player.drop(extracted, false, net.minecraft.util.Prediction.SERVER_ONLY);
+            *///?}
         }
     }
 
@@ -1087,7 +1099,11 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             compensation.setCount(remaining);
             terminal.deposit(compensation, false);
             if (!compensation.isEmpty()) {
+                //? if < 26.3 {
                 player.drop(compensation, false);
+                //?} else {
+                /*player.drop(compensation, false, net.minecraft.util.Prediction.SERVER_ONLY);
+                *///?}
             }
         }
         return originalCount - remaining;

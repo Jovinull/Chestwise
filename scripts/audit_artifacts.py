@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import struct
 import sys
@@ -36,9 +37,9 @@ ARTIFACTS = (
     Artifact("1.21.1", "fabric", "versions/1.21.1-fabric/build/libs/chestwise-fabric-1.21.1-0.1.0.jar", "fabric.mod.json"),
     Artifact("1.21.1", "forge", "versions/1.21.1-forge/build/libs/chestwise-forge-1.21.1-0.1.0.jar", "META-INF/mods.toml"),
     Artifact("1.21.1", "neoforge", "versions/1.21.1-neoforge/build/libs/chestwise-neoforge-1.21.1-0.1.0.jar", "META-INF/neoforge.mods.toml"),
-    Artifact("26.2", "fabric", "versions/26.2-fabric/build/libs/chestwise-fabric-26.2-0.1.0.jar", "fabric.mod.json"),
-    Artifact("26.2", "forge", "platforms/forge-26.2/build/libs/chestwise-forge-26.2-0.1.0.jar", "META-INF/mods.toml"),
-    Artifact("26.2", "neoforge", "versions/26.2-neoforge/build/libs/chestwise-neoforge-26.2-0.1.0.jar", "META-INF/neoforge.mods.toml"),
+    Artifact("26.3", "fabric", "versions/26.3-fabric/build/libs/chestwise-fabric-26.3-0.1.0.jar", "fabric.mod.json"),
+    Artifact("26.3", "forge", "platforms/forge-26.3/build/libs/chestwise-forge-26.3-0.1.0.jar", "META-INF/mods.toml"),
+    Artifact("26.3", "neoforge", "versions/26.3-neoforge/build/libs/chestwise-neoforge-26.3-0.1.0.jar", "META-INF/neoforge.mods.toml"),
 )
 
 COMMON_ENTRIES = {
@@ -92,8 +93,7 @@ def validate(artifact: Artifact) -> str:
             or "/test/" in name
             or name.startswith("test/")
             or "ChestwiseGameTests" in name
-            or name.endswith("Test.class")
-            or name.endswith("Tests.class")
+            or re.search(r"(?:^|/)[^/]*(?:Test|Tests)(?:\$[^/]*)?\.class$", name)
         ]
         if forbidden:
             fail(f"{path.name}: ships forbidden development or third-party entries {forbidden[:5]}")
@@ -143,10 +143,30 @@ def validate(artifact: Artifact) -> str:
                 fail(f"{path.name}: invalid Fabric issue URL")
         elif "modId = \"chestwise\"" not in metadata_text and 'modId="chestwise"' not in metadata_text:
             fail(f"{path.name}: invalid Forge-family mod id")
-        elif 'logoFile = "assets/chestwise/icon.png"' not in metadata_text and 'logoFile="assets/chestwise/icon.png"' not in metadata_text:
-            fail(f"{path.name}: missing Forge-family icon declaration")
+        elif artifact.metadata == "META-INF/neoforge.mods.toml" and not any(
+            marker in metadata_text
+            for marker in (
+                'iconFile = "assets/chestwise/icon.png"',
+                'iconFile="assets/chestwise/icon.png"',
+                'logoFile = "assets/chestwise/icon.png"',
+                'logoFile="assets/chestwise/icon.png"',
+            )
+        ):
+            fail(f"{path.name}: missing NeoForge icon declaration")
+        elif artifact.metadata != "META-INF/neoforge.mods.toml" and 'logoFile = "assets/chestwise/icon.png"' not in metadata_text and 'logoFile="assets/chestwise/icon.png"' not in metadata_text:
+            fail(f"{path.name}: missing Forge icon declaration")
         elif "https://github.com/Jovinull/Chestwise/issues" not in metadata_text:
             fail(f"{path.name}: invalid Forge-family issue URL")
+        elif 'license = "MIT"' not in metadata_text:
+            fail(f"{path.name}: invalid Forge-family license")
+        elif artifact.minecraft == "26.3" and artifact.loader == "forge" and 'versionRange = "[26.3,26.4)"' not in metadata_text:
+            fail(f"{path.name}: invalid Forge Minecraft version range")
+        elif artifact.minecraft == "26.3" and artifact.loader == "neoforge" and 'versionRange = "[26.3]"' not in metadata_text:
+            fail(f"{path.name}: invalid Forge-family Minecraft version range")
+
+        if artifact.minecraft == "26.3" and artifact.loader == "forge":
+            if 'versionRange = "[66,)"' not in metadata_text:
+                fail(f"{path.name}: invalid Forge 26.3 loader range")
 
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -165,6 +185,10 @@ def main() -> int:
     if not args.check_only:
         destination = ROOT / "build" / "release"
         destination.mkdir(parents=True, exist_ok=True)
+        expected_names = {artifact.path.name for artifact in ARTIFACTS}
+        for stale_artifact in destination.glob("chestwise-*.jar"):
+            if stale_artifact.name not in expected_names:
+                stale_artifact.unlink()
         for artifact in ARTIFACTS:
             shutil.copy2(artifact.path, destination / artifact.path.name)
         checksum_file = destination / "SHA256SUMS"

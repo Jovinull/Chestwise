@@ -24,13 +24,7 @@ public final class ForgeItemStorageSource implements MinecraftStorageSource {
     private final BlockEntity owner;
     private final IItemHandler handler;
 
-    private ForgeItemStorageSource(
-        String sourceId,
-        BlockPos position,
-        ServerLevel level,
-        BlockEntity owner,
-        IItemHandler handler
-    ) {
+    private ForgeItemStorageSource(String sourceId, BlockPos position, ServerLevel level, BlockEntity owner, IItemHandler handler) {
         this.sourceId = sourceId;
         this.position = position.immutable();
         this.level = level;

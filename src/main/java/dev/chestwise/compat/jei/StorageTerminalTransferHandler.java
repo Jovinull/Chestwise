@@ -14,6 +14,10 @@ import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandler;
+//? if >= 26.3 {
+/*import mezz.jei.api.recipe.transfer.IRecipeTransferContext;
+import mezz.jei.api.recipe.transfer.RecipeTransferResult;
+*///?}
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
@@ -65,6 +69,9 @@ public final class StorageTerminalTransferHandler
     }
 
     @Override
+    //? if >= 26.3 {
+    /*@SuppressWarnings("removal")
+    *///?}
     public IRecipeTransferError transferRecipe(
         StorageTerminalMenu menu,
         Object recipe,
@@ -73,16 +80,36 @@ public final class StorageTerminalTransferHandler
         boolean maxTransfer,
         boolean doTransfer
     ) {
+        transfer(slotsView, doTransfer);
+        return null;
+    }
+
+    //? if >= 26.3 {
+    /*@Override
+    public IRecipeTransferError transferRecipe(
+        IRecipeTransferContext<Object, StorageTerminalMenu> context,
+        boolean doTransfer
+    ) {
+        boolean accepted = transfer(context.getRecipeSlots(), doTransfer);
+        context.completeRecipeTransfer(accepted ? RecipeTransferResult.SUCCESS : RecipeTransferResult.REJECTED);
+        return null;
+    }
+    *///?}
+
+    private static boolean transfer(
+        IRecipeSlotsView slotsView,
+        boolean doTransfer
+    ) {
         List<IRecipeSlotView> inputs = slotsView.getSlotViews(RecipeIngredientRole.INPUT);
         if (inputs.isEmpty() || inputs.size() > StorageTerminalMenu.RECIPE_SLOTS) {
-            return null;
+            return false;
         }
         if (doTransfer) {
             ChestwiseNetworking.sendRecipe(encode(inputs));
         }
         // The server owns the decision: only it can see the surrounding
         // containers, so refusing here would reject recipes the storage can fill.
-        return null;
+        return true;
     }
 
     private static String encode(List<IRecipeSlotView> inputs) {

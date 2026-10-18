@@ -24,20 +24,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Test bounded download retries
         run: python3 -m unittest scripts.test_download_utils
-      - name: Build and test all nine variants
+      - name: Build and test legacy variants
         run: >-
           ./gradlew
           :1.20.1-fabric:build :1.20.1-forge:build :legacy-neoforge-1.20.1:build
           :1.21.1-fabric:build :1.21.1-forge:build :1.21.1-neoforge:build
-          :26.2-fabric:build :forge-26.2:build :26.2-neoforge:build
+          --stacktrace
+      - name: Build and test Minecraft 26.3 variants
+        run: >-
+          ./gradlew -p platforms/modern-26.3
+          :26.3-fabric:build :forge-26.3:build :26.3-neoforge:build
           --stacktrace
       - name: Run Fabric game tests
         run: >-
           ./gradlew
           :1.20.1-fabric:runGameTestServer
           :1.21.1-fabric:runGameTestServer
-          :26.2-fabric:runGameTestServer
           --stacktrace
+      - name: Run Minecraft 26.3 Fabric game tests
+        run: ./gradlew -p platforms/modern-26.3 :26.3-fabric:runGameTestServer --stacktrace
       - name: Audit and assemble release files
         run: python3 scripts/audit_artifacts.py
       - uses: actions/upload-artifact@v6
@@ -61,9 +66,9 @@ jobs:
           - { minecraft: 1.21.1, loader: fabric, loader_version: 0.19.5, java: 21, fabric_api: "--fabric-api 0.116.15+1.21.1" }
           - { minecraft: 1.21.1, loader: forge, loader_version: 1.21.1-52.1.16, java: 21, fabric_api: "" }
           - { minecraft: 1.21.1, loader: neoforge, loader_version: 21.1.248, java: 21, fabric_api: "" }
-          - { minecraft: 26.2, loader: fabric, loader_version: 0.19.5, java: 25, fabric_api: "--fabric-api 0.158.0+26.2" }
-          - { minecraft: 26.2, loader: forge, loader_version: 26.2-65.1.2, java: 25, fabric_api: "" }
-          - { minecraft: 26.2, loader: neoforge, loader_version: 26.2.0.67, java: 25, fabric_api: "" }
+          - { minecraft: 26.3, loader: fabric, loader_version: 0.19.5, java: 25, fabric_api: "--fabric-api 0.162.0+26.3" }
+          - { minecraft: 26.3, loader: forge, loader_version: 26.3-66.0.13, java: 25, fabric_api: "" }
+          - { minecraft: 26.3, loader: neoforge, loader_version: 26.3.0.92, java: 25, fabric_api: "" }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -91,9 +96,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { minecraft: 1.20.1, java: 17, fabric_api: 0.92.11+1.20.1 }
-          - { minecraft: 1.21.1, java: 21, fabric_api: 0.116.15+1.21.1 }
-          - { minecraft: 26.2, java: 25, fabric_api: 0.158.0+26.2 }
+          - { minecraft: 1.20.1, java: 17, quilt_loader: 0.30.0, fabric_api: 0.92.11+1.20.1 }
+          - { minecraft: 1.21.1, java: 21, quilt_loader: 0.30.0, fabric_api: 0.116.15+1.21.1 }
+          - { minecraft: 26.3, java: 25, quilt_loader: 0.30.1, fabric_api: 0.162.0+26.3 }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -108,6 +113,7 @@ jobs:
         run: >-
           python3 scripts/quilt_smoke_test.py
           --minecraft ${{ matrix.minecraft }}
+          --loader ${{ matrix.quilt_loader || '0.30.0' }}
           --fabric-api ${{ matrix.fabric_api }}
           --artifact build/release/chestwise-fabric-${{ matrix.minecraft }}-0.1.0.jar
 
