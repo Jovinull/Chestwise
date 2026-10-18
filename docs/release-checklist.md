@@ -7,7 +7,7 @@ attach logs or CI URLs to the release issue.
 
 - [x] All nine artifact builds pass with compiler warnings treated as errors.
 - [x] All shared JUnit suites pass on all nine variants.
-- [x] Fabric game tests pass on Minecraft 1.20.1, 1.21.1, and 26.2.
+- [x] Fabric game tests pass on Minecraft 1.20.1, 1.21.1, and 26.3.
 - [x] The three packaged Fabric JARs boot and stop cleanly on Quilt Loader.
 - [x] Every packaged loader JAR boots and stops cleanly on its official dedicated server.
 - [x] `python scripts/audit_artifacts.py` reports nine passes and emits `SHA256SUMS`.

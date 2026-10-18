@@ -14,13 +14,13 @@ storage.
 | --- | --- | --- | --- | --- |
 | 1.20.1 | yes | pass | yes | yes |
 | 1.21.1 | yes | pass | yes | yes |
-| 26.2 | yes | pass | yes | yes |
+| 26.3 | yes | pass | yes | yes |
 
 Fabric builds require Fabric API. Quilt uses the same Fabric artifact with
 Fabric API; QSL and QFAPI are not required. Quilt client/server smokes passed
-for all three listed Minecraft versions; this does not claim compatibility with
-every Quilt mod combination. Forge and NeoForge builds have no runtime library
-dependency.
+for Minecraft 1.20.1, 1.21.1, and 26.3. These are compatibility smokes, not a
+claim of compatibility with every Quilt mod combination. Forge and NeoForge
+builds have no runtime library dependency.
 
 ## Features
 
@@ -45,7 +45,7 @@ The checked-in Gradle wrapper and Java toolchains build all supported variants:
 ```shell
 ./gradlew :1.20.1-fabric:build :1.20.1-forge:build :legacy-neoforge-1.20.1:build
 ./gradlew :1.21.1-fabric:build :1.21.1-forge:build :1.21.1-neoforge:build
-./gradlew :26.2-fabric:build :forge-26.2:build :26.2-neoforge:build
+./gradlew -p platforms/modern-26.3 :26.3-fabric:build :forge-26.3:build :26.3-neoforge:build
 python scripts/audit_artifacts.py
 ```
 

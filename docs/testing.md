@@ -6,10 +6,11 @@ are booted on their target dedicated server before release.
 
 ## Unit tests
 
-Run every normal Stonecutter node:
+Run every legacy Stonecutter node and then the isolated 26.3 build:
 
 ```shell
 ./gradlew test
+./gradlew -p platforms/modern-26.3 test
 ```
 
 The suite covers exact item identity, aggregation, search syntax, sorting,
@@ -53,7 +54,7 @@ explicitly removes both the class (including any future nested classes) and the
 ```shell
 ./gradlew :1.20.1-fabric:runGameTestServer
 ./gradlew :1.21.1-fabric:runGameTestServer
-./gradlew :26.2-fabric:runGameTestServer
+./gradlew -p platforms/modern-26.3 :26.3-fabric:runGameTestServer
 ```
 
 ## Quilt compatibility
@@ -72,16 +73,19 @@ python scripts/quilt_smoke_test.py \
   --artifact versions/1.21.1-fabric/build/libs/chestwise-fabric-1.21.1-0.1.0.jar
 ```
 
-The dedicated-server compatibility matrix uses Quilt Loader 0.30.0 for Minecraft
-1.20.1, 1.21.1, and 26.2. Client smokes use Quilt Loader 0.30.1. QSL and QFAPI
+The 1.20.1 and 1.21.1 compatibility checks use Quilt Loader 0.30.0 for servers
+and 0.30.1 for clients. Minecraft 26.3 uses Quilt Loader 0.30.1. QSL and QFAPI
 are not runtime dependencies.
 
-On all three supported lines, the production Fabric artifact was discovered by
-Quilt and its dedicated server reached the ready marker. In separate Quilt
-client smokes, a world loaded, the Storage Terminal could be obtained and placed,
-its block rendered, and the screen opened, accepted search text, and closed with
-Escape. These are startup and basic interaction checks, not exhaustive
-cross-mod compatibility tests.
+On Minecraft 1.20.1 and 1.21.1, the production Fabric artifact was discovered by
+Quilt and its dedicated server reached the ready marker. In separate client
+smokes, a world loaded, the Storage Terminal could be obtained and placed, its
+block rendered, and the screen opened, accepted search text, and closed with
+Escape. On 26.3, the same Fabric artifact was discovered by Quilt Loader 0.30.1;
+a world loaded, the terminal was placed and rendered, its screen opened, search
+accepted text, and Escape closed it. The dedicated server also initialized
+Chestwise and reached the ready marker. These are startup and basic interaction
+checks, not exhaustive cross-mod compatibility tests.
 
 ## Packaged loader smoke tests
 
@@ -99,10 +103,11 @@ certification.
 | Viewer | Combination | Evidence |
 | --- | --- | --- |
 | JEI 19.44.0.406 | Minecraft 1.21.1, Fabric | Startup; vanilla transfer/craft; occupied-grid return; full-storage refusal; and insufficient-input refusal certified. Cake remainder behavior is covered by the RecipeManager GameTest, not independently through JEI. |
+| JEI 31.16.0.83 | Minecraft 26.3, Fabric | Runtime startup/plugin discovery; physical-chest dark-oak-log transfer and four-plank craft passed. Edge-case transfer certification remains represented by the 1.21.1 runtime checks and shared GameTests. |
 | JEI | Other supported loader/version nodes | Compile-tested only. |
 | EMI 1.1.23+1.21.1+fabric + JEI 19.44.0.406 | Minecraft 1.21.1, Fabric | Startup, oak-log-to-planks transfer/craft, occupied-grid return, and insufficient-input refusal tested through JEMI. No native Chestwise EMI plugin. |
-| REI | Fabric 1.20.1/1.21.1/26.2; Forge 1.20.1; NeoForge 1.20.1/1.21.1/26.2 | Compile-tested only; no runtime transfer certification. |
-| REI | Forge 1.21.1 and 26.2 | No Chestwise REI handler is built for these nodes. |
+| REI | Fabric 1.20.1/1.21.1/26.3; Forge 1.20.1; NeoForge 1.20.1/1.21.1/26.3 | Compile-tested only; no runtime transfer certification. |
+| REI | Forge 1.21.1 and 26.3 | No Chestwise REI handler is built for these nodes. |
 
 The JEI runtime checks confirm plugin discovery, a physical-chest ingredient
 withdrawn into the terminal grid, and the resulting four-plank craft. An occupied
@@ -143,10 +148,10 @@ inventory full, a target of 100 and 64 torches in storage moved only 27 into the
 remaining space of the existing stack; the player reached 64 and the chest kept
 37. Repeating Restock with no remaining player capacity left the chest unchanged.
 
-Quilt client smoke passed on 1.20.1, 1.21.1, and 26.2 with the production Fabric
+Quilt client smoke passed on 1.20.1, 1.21.1, and 26.3 with the production Fabric
 artifact: Chestwise discovery, world load, terminal placement/rendering, screen
-open, search input, and Escape close. Dedicated-server Quilt checks are listed
-separately above.
+open, search input, and Escape close. These are basic compatibility smokes, not
+exhaustive testing with other Quilt mods.
 
 ## Release evidence
 

@@ -9,7 +9,7 @@ than hard-coding individual storage mods.
 | Forge | `IItemHandler` item capability |
 | NeoForge 1.20.1 | legacy Forge-compatible item capability |
 | NeoForge 1.21.1 | `IItemHandler` item capability |
-| NeoForge 26.2 | item `ResourceHandler` capability |
+| NeoForge 26.3 | item `ResourceHandler` capability |
 
 Vanilla `Container` block entities are handled directly. This includes chests,
 trapped chests, barrels, and placed shulker boxes. Composite handlers are
@@ -34,9 +34,9 @@ in the chests.
 | --- | --- | --- | --- | --- |
 | JEI | All nine loader/version nodes | 1.21.1 Fabric, JEI 19.44.0.406: PASS | 1.21.1 Fabric: vanilla transfer/craft, occupied-grid return, full-storage refusal, and insufficient-input refusal PASS. Cake remainders are covered by the vanilla `RecipeManager` GameTest, not a viewer-specific transfer case. Other nodes compile-tested only. | JEI `IRecipeTransferHandler`; Fabric discovers it through `jei_mod_plugin`. |
 | EMI | No EMI API/plugin is compiled | 1.21.1 Fabric, EMI 1.1.23+1.21.1+fabric + JEI 19.44.0.406: PASS | Oak-log-to-planks transfer/craft, occupied-grid return, and insufficient-input refusal PASS through JEMI. No native Chestwise EMI plugin. | Indirect JEMI/JEI compatibility (`dev.emi.emi.jemi.JemiPlugin`). |
-| REI | Fabric 1.20.1/1.21.1/26.2; Forge 1.20.1; NeoForge 1.20.1/1.21.1/26.2. | Not runtime-tested | Not runtime-tested; compile-tested only | REI `TransferHandler`. |
+| REI | Fabric 1.20.1/1.21.1/26.3; Forge 1.20.1; NeoForge 1.20.1/1.21.1/26.3. | Not runtime-tested | Not runtime-tested; compile-tested only | REI `TransferHandler`. |
 
-Chestwise does not compile its REI handler for Forge 1.21.1 or 26.2. Those
+Chestwise does not compile its REI handler for Forge 1.21.1 or 26.3. Those
 combinations are unsupported by this integration matrix; do not infer support
 from REI's general project-page loader list.
 
@@ -87,12 +87,12 @@ unique or transferable.
 ## Quilt client and server
 
 The production Fabric artifacts passed dedicated-server startup on Quilt Loader
-0.30.0 for Minecraft 1.20.1, 1.21.1, and 26.2. Client smoke tests then used the
-same Fabric artifacts on Quilt Loader 0.30.1 for all three versions: Chestwise
-loaded, a world opened, the terminal was obtained and placed, its model rendered,
-the screen opened, search accepted input, and Escape closed it. These are client
-and server compatibility smokes, not a claim that every Quilt mod combination
-has been tested.
+0.30.0 for Minecraft 1.20.1 and 1.21.1. Client smokes on Quilt Loader 0.30.1
+confirmed Chestwise loading, world startup, terminal placement/rendering, screen
+open, search input, and Escape close on Minecraft 1.20.1, 1.21.1, and 26.3.
+The 26.3 dedicated-server smoke also passed on Loader 0.30.1. These are basic
+compatibility smokes, not a claim that every Quilt mod combination has been
+tested.
 
 Chestwise never opens item-contained inventories recursively, force-loads a
 chunk, accesses another dimension, or treats player backpacks as terminal

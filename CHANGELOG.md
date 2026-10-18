@@ -11,7 +11,8 @@ also encoded in each artifact name.
   indexing, search, sorting, withdrawal, deposits, quick stack, protected slots,
   physical location, 3 × 3 crafting, and persistent per-player Restock targets.
 - Added Fabric, Forge, and NeoForge artifacts for Minecraft 1.20.1, 1.21.1, and
-  26.2, plus Quilt runtime validation of each Fabric artifact.
+  26.3, plus Quilt runtime validation of each Fabric artifact where the loader
+  is available.
 - Added automated unit tests, Fabric game tests, dedicated-server smoke tests,
   artifact auditing, CI, English and Brazilian Portuguese translations.
 - Modelled the Storage Terminal as a vanilla-style catalogue desk with original

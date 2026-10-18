@@ -19,10 +19,12 @@ Before submitting a change:
 
 ```shell
 ./gradlew test
-./gradlew :1.20.1-fabric:runGameTestServer :1.21.1-fabric:runGameTestServer :26.2-fabric:runGameTestServer
+./gradlew :1.20.1-fabric:runGameTestServer :1.21.1-fabric:runGameTestServer
+./gradlew -p platforms/modern-26.3 :26.3-fabric:runGameTestServer
 ```
 
-Changes affecting packaging must build all nine artifacts and pass
+Changes affecting packaging must build all nine artifacts (the 26.3 nodes use
+the isolated build under `platforms/modern-26.3`) and pass
 `python scripts/audit_artifacts.py`. Compiler warnings are errors.
 
 By contributing, you agree that your contribution is licensed under MIT.
