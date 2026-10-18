@@ -10,6 +10,14 @@ permissions:
   contents: read
 
 jobs:
+  smoke-script-tests:
+    name: Smoke installer tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test bounded download retries
+        run: python3 -m unittest scripts.test_download_utils
+
   artifacts:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -58,8 +66,8 @@ jobs:
             java: 25
             jar: versions/26.2-neoforge/build/libs/chestwise-neoforge-26.2-0.1.0.jar
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
@@ -67,7 +75,7 @@ jobs:
       - name: Build and run unit tests
         run: ./gradlew ${{ matrix.task }} --stacktrace
       - name: Upload packaged mod
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.name }}
           path: ${{ matrix.jar }}
@@ -88,8 +96,8 @@ jobs:
           - minecraft: 26.2
             java: 25
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
@@ -118,8 +126,8 @@ jobs:
             runtime_java: 25
             fabric_api: 0.158.0+26.2
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
@@ -127,7 +135,7 @@ jobs:
       - name: Package Fabric artifact
         run: ./gradlew :${{ matrix.minecraft }}-fabric:build --stacktrace
       - name: Set up Minecraft runtime Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: ${{ matrix.runtime_java }}

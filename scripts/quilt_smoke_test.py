@@ -10,22 +10,17 @@ import subprocess
 import sys
 import threading
 import time
-import urllib.request
 from pathlib import Path
+
+try:
+    from .download_utils import MAX_ATTEMPTS, download, retry_delay_seconds, transient_http_status
+except ImportError:
+    from download_utils import MAX_ATTEMPTS, download, retry_delay_seconds, transient_http_status
 
 
 INSTALLER_VERSION = "0.15.1"
 DEFAULT_LOADER_VERSION = "0.30.0"
 STARTUP_TIMEOUT_SECONDS = 180
-
-
-def download(url: str, destination: Path) -> None:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.is_file():
-        return
-    print(f"Downloading {url}", flush=True)
-    with urllib.request.urlopen(url, timeout=60) as response:
-        destination.write_bytes(response.read())
 
 
 def stream_output(process: subprocess.Popen[str], lines: queue.Queue[str | None]) -> None:
@@ -106,6 +101,70 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def install_quilt_server(
+    java: Path,
+    installer: Path,
+    minecraft: str,
+    loader: str,
+    work_root: Path,
+) -> Path:
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        install_dir = work_root / f"quilt-install-{attempt}"
+        install_dir.mkdir(parents=True, exist_ok=False)
+        command = [
+            str(java),
+            "-jar",
+            str(installer),
+            "install",
+            "server",
+            minecraft,
+            loader,
+            f"--install-dir={install_dir}",
+            "--download-server",
+        ]
+        result = subprocess.run(
+            command,
+            cwd=install_dir,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        output = result.stdout or ""
+        if output:
+            write_log(output if output.endswith("\n") else output + "\n")
+
+        transient_status = transient_http_status(output, ("meta.quiltmc.org",))
+        if transient_status is not None:
+            if attempt == MAX_ATTEMPTS:
+                raise RuntimeError(
+                    f"Quilt installer received transient HTTP {transient_status} from "
+                    f"meta.quiltmc.org after {MAX_ATTEMPTS} attempts"
+                )
+            delay = retry_delay_seconds(attempt)
+            print(
+                f"Transient Quilt metadata HTTP {transient_status}; retry "
+                f"{attempt + 1}/{MAX_ATTEMPTS} in {delay}s",
+                file=sys.stderr,
+                flush=True,
+            )
+            time.sleep(delay)
+            continue
+
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(result.returncode, command, output=output)
+
+        if not (install_dir / "quilt-server-launch.jar").is_file():
+            raise RuntimeError(
+                "Quilt installer exited successfully without creating quilt-server-launch.jar"
+            )
+        return install_dir
+
+    raise AssertionError("bounded Quilt installer retry loop exited unexpectedly")
+
+
 def main() -> int:
     args = parse_args()
     artifact = args.artifact.resolve()
@@ -118,29 +177,17 @@ def main() -> int:
         raise FileNotFoundError(f"Java executable does not exist: {java}")
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
-    server_dir = (args.work_root / f"{args.minecraft}-{stamp}").resolve()
-    server_dir.mkdir(parents=True, exist_ok=False)
+    server_root = (args.work_root / f"{args.minecraft}-{stamp}").resolve()
+    server_root.mkdir(parents=True, exist_ok=False)
 
     installer = args.work_root.resolve() / f"quilt-installer-{INSTALLER_VERSION}.jar"
     download(
         "https://maven.quiltmc.org/repository/release/org/quiltmc/quilt-installer/"
         f"{INSTALLER_VERSION}/quilt-installer-{INSTALLER_VERSION}.jar",
         installer,
+        timeout=60,
     )
-    subprocess.run(
-        [
-            str(java),
-            "-jar",
-            str(installer),
-            "install",
-            "server",
-            args.minecraft,
-            args.loader,
-            f"--install-dir={server_dir}",
-            "--download-server",
-        ],
-        check=True,
-    )
+    server_dir = install_quilt_server(java, installer, args.minecraft, args.loader, server_root)
 
     mods = server_dir / "mods"
     mods.mkdir()
@@ -150,6 +197,7 @@ def main() -> int:
         "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/"
         f"{args.fabric_api}/{api_name}",
         mods / api_name,
+        timeout=60,
     )
     (server_dir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
     (server_dir / "server.properties").write_text(

@@ -10,22 +10,13 @@ import subprocess
 import sys
 import threading
 import time
-import urllib.request
 from pathlib import Path
+
+from download_utils import download
 
 
 FABRIC_INSTALLER_VERSION = "1.1.1"
 STARTUP_TIMEOUT_SECONDS = 240
-
-
-def download(url: str, destination: Path) -> None:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.is_file():
-        return
-    print(f"Downloading {url}", flush=True)
-    request = urllib.request.Request(url, headers={"User-Agent": "Chestwise-release-smoke/1.0"})
-    with urllib.request.urlopen(request, timeout=90) as response:
-        destination.write_bytes(response.read())
 
 
 def stream_output(process: subprocess.Popen[str], lines: queue.Queue[str | None]) -> None:
@@ -97,6 +88,8 @@ def install_fabric(args: argparse.Namespace, java: Path, server_dir: Path) -> li
         "https://meta.fabricmc.net/v2/versions/loader/"
         f"{args.minecraft}/{args.loader_version}/{FABRIC_INSTALLER_VERSION}/server/jar",
         server_jar,
+        timeout=90,
+        headers={"User-Agent": "Chestwise-release-smoke/1.0"},
     )
     if not args.fabric_api:
         raise ValueError("--fabric-api is required for Fabric")
@@ -105,6 +98,8 @@ def install_fabric(args: argparse.Namespace, java: Path, server_dir: Path) -> li
         "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/"
         f"{args.fabric_api}/{api_name}",
         server_dir / "mods" / api_name,
+        timeout=90,
+        headers={"User-Agent": "Chestwise-release-smoke/1.0"},
     )
     return [str(java), "-Xms512M", "-Xmx1G", "-jar", str(server_jar), "nogui"]
 
@@ -121,7 +116,12 @@ def install_forge_family(args: argparse.Namespace, java: Path, server_dir: Path)
         base = "https://maven.neoforged.net/releases/net/neoforged/neoforge"
     installer_name = f"{artifact}-{args.loader_version}-installer.jar"
     installer = args.work_root.resolve() / "installers" / installer_name
-    download(f"{base}/{args.loader_version}/{installer_name}", installer)
+    download(
+        f"{base}/{args.loader_version}/{installer_name}",
+        installer,
+        timeout=90,
+        headers={"User-Agent": "Chestwise-release-smoke/1.0"},
+    )
     installation = subprocess.run(
         [str(java), "-jar", str(installer), "--installServer", str(server_dir)],
         check=True,
