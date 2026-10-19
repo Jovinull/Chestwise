@@ -23,7 +23,7 @@ jobs:
             25
       - uses: gradle/actions/setup-gradle@v6
       - name: Test bounded download retries
-        run: python3 -m unittest scripts.test_download_utils
+        run: python3 -m unittest scripts.test_download_utils scripts.test_publish_release
       - name: Build and test legacy variants
         run: >-
           ./gradlew
@@ -45,6 +45,8 @@ jobs:
         run: ./gradlew -p platforms/modern-26.3 :26.3-fabric:runGameTestServer --stacktrace
       - name: Audit and assemble release files
         run: python3 scripts/audit_artifacts.py
+      - name: Validate public distribution mapping without uploading
+        run: python3 scripts/publish_release.py --artifact-dir build/release --version 0.1.0
       - uses: actions/upload-artifact@v7
         with:
           name: chestwise-release
@@ -117,11 +119,32 @@ jobs:
           --fabric-api ${{ matrix.fabric_api }}
           --artifact build/release/chestwise-fabric-${{ matrix.minecraft }}-0.1.0.jar
 
-  publish:
+  publish-platforms:
     needs: [package, loader-smoke, quilt-smoke]
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && github.ref == 'refs/tags/v0.1.0'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: chestwise-release
+          path: build/release
+      - name: Stage platform files as drafts/manual releases
+        env:
+          CHESTWISE_MODRINTH_PROJECT_ID: ${{ vars.CHESTWISE_MODRINTH_PROJECT_ID }}
+          CHESTWISE_CURSEFORGE_PROJECT_ID: ${{ vars.CHESTWISE_CURSEFORGE_PROJECT_ID }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        run: python3 scripts/publish_release.py --artifact-dir build/release --version 0.1.0 --publish
+
+  publish:
+    needs: [package, loader-smoke, quilt-smoke, publish-platforms]
+    if: github.event_name == 'push' && github.ref == 'refs/tags/v0.1.0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: chestwise-release
@@ -129,4 +152,10 @@ jobs:
       - name: Publish GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" build/release/* --verify-tag --generate-notes --repo "${GITHUB_REPOSITORY}"
+        run: >-
+          gh release create "${GITHUB_REF_NAME}" build/release/*
+          --verify-tag
+          --title "Chestwise 0.1.0 (Beta)"
+          --notes-file docs/release-notes-0.1.0.md
+          --prerelease
+          --repo "${GITHUB_REPOSITORY}"

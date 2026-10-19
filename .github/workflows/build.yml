@@ -11,12 +11,12 @@ permissions:
 
 jobs:
   smoke-script-tests:
-    name: Smoke installer tests
+    name: Smoke and release-script tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - name: Test bounded download retries
-        run: python3 -m unittest scripts.test_download_utils
+        run: python3 -m unittest scripts.test_download_utils scripts.test_publish_release
 
   artifacts:
     name: ${{ matrix.name }}
