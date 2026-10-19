@@ -18,8 +18,11 @@ validation, tests for those scripts, and release documentation. No gameplay,
 runtime Java, or shipped resource code changed from the source baseline above.
 The clean build was performed in a detached clean worktree at that commit; its
 nine JARs are byte-identical to the JARs downloaded from the successful `main`
-Release workflow. The RC branch workflows still require their own run after the
-branch is pushed; those results must be appended before final review.
+Release workflow. The pushed RC workflow results are Build and test run
+[39282152711](https://github.com/Jovinull/Chestwise/actions/runs/39282152711)
+and Release run
+[39282161012](https://github.com/Jovinull/Chestwise/actions/runs/39282161012),
+both successful.
 
 ## Automated validation
 
@@ -35,15 +38,15 @@ The clean checkout completed the following gates:
 | Artifact audit | 9/9 | `scripts/audit_artifacts.py`; exact nine JARs and `SHA256SUMS` |
 | Download/publisher script tests | 16/16 | `python -m unittest scripts.test_download_utils scripts.test_publish_release` |
 | Publisher dry-run | PASS | Nine artifacts validated and 18 platform upload mappings resolved; no network request |
-| Official dedicated servers | 9/9 | Main Release workflow run [39257448570](https://github.com/Jovinull/Chestwise/actions/runs/39257448570) |
-| Quilt dedicated servers | 3/3 | Same Release workflow run; exact artifact hashes listed below |
+| Official dedicated servers | 9/9 | RC Release workflow run [39282161012](https://github.com/Jovinull/Chestwise/actions/runs/39282161012) |
+| Quilt dedicated servers | 3/3 | Same RC Release workflow run; exact artifact hashes listed below |
+| RC Build and test workflow | PASS, 16/16 jobs | [39282152711](https://github.com/Jovinull/Chestwise/actions/runs/39282152711) |
+| RC Release workflow | PASS; package, loader-smoke 9/9, quilt-smoke 3/3; publishing skipped | [39282161012](https://github.com/Jovinull/Chestwise/actions/runs/39282161012) |
 
 The current-main CI baseline was `Build and test` run
 [39256547093](https://github.com/Jovinull/Chestwise/actions/runs/39256547093),
-16/16 jobs passed. The current-main Release run linked above passed and skipped
-publishing. The RC workflow changes (including the new publisher validation)
-are not covered by those historical workflow runs and must be checked on the RC
-branch.
+16/16 jobs passed. The RC-specific runs above additionally validate the
+modified workflow files and publisher validation on the pushed candidate.
 
 Clean-worktree commands were the six legacy `build` tasks, the three 26.3
 `build` tasks, all nine `test` tasks, and the three Fabric

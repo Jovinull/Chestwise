@@ -17,13 +17,12 @@ only after evidence exists; the current status and evidence boundaries are in
   artifacts; this is not a claim of general Quilt-mod compatibility.
 - [x] Bounded-download and publishing-validation script tests pass (16/16); the
   offline publishing dry-run resolves nine artifacts and eighteen mappings.
-- [ ] Run the updated RC `Build and test` and `Release` workflows on the pushed
-  RC branch; release dispatch must skip publishing.
+- [x] Run the updated RC `Build and test` and `Release` workflows on the pushed
+  RC branch; release dispatch skipped publishing (runs 39282152711 and
+  39282161012).
 
-The clean build, GameTests, hashes, and historical CI artifact comparison are
-recorded in [`release-evidence-0.1.0.md`](release-evidence-0.1.0.md). The
-successful main-branch CI runs are evidence for unchanged runtime artifacts,
-not a substitute for running the modified RC workflow files.
+The clean build, GameTests, hashes, and RC workflow runs are recorded in
+[`release-evidence-0.1.0.md`](release-evidence-0.1.0.md).
 
 ## Client and interactive gates
 
