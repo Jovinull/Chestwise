@@ -45,7 +45,7 @@ jobs:
         run: ./gradlew -p platforms/modern-26.3 :26.3-fabric:runGameTestServer --stacktrace
       - name: Audit and assemble release files
         run: python3 scripts/audit_artifacts.py
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: chestwise-release
           path: build/release/*
