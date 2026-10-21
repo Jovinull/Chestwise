@@ -3,6 +3,7 @@
 .toolchains/
 build/
 out/
+**/bin/
 
 # local run / dev server state
 run/
