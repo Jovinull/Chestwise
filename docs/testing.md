@@ -18,6 +18,10 @@ incremental invalidation, withdrawal planning, deposit priority, safe matching
 deposits, configuration validation, compact count formatting, and the recipe
 transfer wire format.
 
+The current 0.1.0 RC candidate has 42 unit tests in each of its nine variants
+(378 total); the current per-version Fabric GameTest counts are recorded in the
+release evidence.
+
 ## Fabric game tests
 
 Fabric nodes include server game tests that place real containers, discover and
@@ -158,5 +162,7 @@ exhaustive testing with other Quilt mods.
 A passing dedicated-server boot establishes loader, entrypoint, registry,
 metadata, recipe, loot table, and server-side classloading compatibility. It does
 not replace client UI testing, multiplayer interaction testing, long-running
-world testing, or explicit third-party-mod integration tests; those are tracked
-separately in the release checklist.
+world testing, or broad third-party-mod integration coverage. The representative
+storage-mod spot checks completed for the 0.1.0 RC are listed in
+[`compatibility.md`](compatibility.md); remaining release gates are tracked in
+the release checklist.

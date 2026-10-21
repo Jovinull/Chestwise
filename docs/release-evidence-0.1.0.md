@@ -1,45 +1,53 @@
 # Chestwise 0.1.0 release-candidate evidence
 
-Status: **not approved for public release**. Required multiplayer, load/soak,
-third-party storage, uninstall, and final listing-asset gates remain open.
+Status: **not approved for public release**. A bounded two-client multiplayer
+test, current-artifact client checks, representative storage-mod tests, and a
+short synthetic load run are recorded below. A longer/more diverse soak, full
+walkthroughs on every official Fabric line, lifecycle/no-force-loading runtime
+coverage, and owner-controlled platform setup remain open.
 
 ## Candidate and evidence scope
 
 | Field | Value |
 | --- | --- |
 | Candidate branch | `release/0.1.0-rc` |
-| Game/source baseline | `b14fa7ee0108235487feb7ebae37cb543ccdec45` |
-| Evidence date | 2026-10-19 |
+| RC branch base | `b14fa7ee0108235487feb7ebae37cb543ccdec45` |
+| Local follow-up state | HEAD `8f92646eacd1d0330929db926b895be1bdd80eda` plus the release-validation fixes and evidence in this working tree; commit SHA will be recorded after integration on the RC branch |
+| Evidence date | 2026-10-21 |
 | Support matrix | Minecraft 1.20.1, 1.21.1, and 26.3; Fabric, Forge, NeoForge |
 | Release channel | Beta; artifact version remains `0.1.0` |
 
-The RC-only changes at this point are release workflows, packaging/publishing
-validation, tests for those scripts, and release documentation. No gameplay,
-runtime Java, or shipped resource code changed from the source baseline above.
-The clean build was performed in a detached clean worktree at that commit; its
-nine JARs are byte-identical to the JARs downloaded from the successful `main`
-Release workflow. The pushed RC workflow results are Build and test run
+The pushed RC commits contain release workflows, packaging/publishing
+validation, tests for those scripts, and release documentation. The current
+working tree additionally fixes cross-menu storage refresh and middle-click
+intent handling, adds regression coverage, and bounds aggregate count labels to
+the slot width. A real 1.20.1 Fabric session confirmed the corrected crafting
+heading is visible at GUI scale 2. Local builds, tests, and artifact hashes
+below describe the current working tree, not the pushed RC baseline; the
+release workflow must be rerun on the committed candidate. The original clean
+build at the pushed baseline matched the nine JARs downloaded from the
+successful `main` Release workflow. The historical RC workflow results are Build and test run
 [39282152711](https://github.com/Jovinull/Chestwise/actions/runs/39282152711)
 and Release run
 [39282161012](https://github.com/Jovinull/Chestwise/actions/runs/39282161012),
-both successful.
+both successful on the earlier pushed RC state.
 
 ## Automated validation
 
-The clean checkout completed the following gates:
+The current local tree completed the following gates:
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Shared JUnit suites | 369/369; 0 failed, 0 errored, 0 skipped | 99 JUnit XML suite files across nine variants |
-| Fabric GameTests 1.20.1 | 24/24 | Clean-worktree `runGameTestServer` |
-| Fabric GameTests 1.21.1 | 24/24 | Clean-worktree `runGameTestServer` |
-| Fabric GameTests 26.3 | 25/25 | Clean-worktree modern-node `runGameTestServer` |
-| Variant builds | 9/9 | Clean-worktree release build commands; warnings-as-errors policy retained |
-| Artifact audit | 9/9 | `scripts/audit_artifacts.py`; exact nine JARs and `SHA256SUMS` |
+| Shared JUnit suites | 378/378; 0 failed, 0 errored, 0 skipped | 42 tests in each of nine variants; 99 JUnit XML suite files |
+| Fabric GameTests 1.20.1 | 25/25 | Current local tree; includes cross-open-menu refresh regression |
+| Fabric GameTests 1.21.1 | 25/25 | Current local tree; includes cross-open-menu refresh regression |
+| Fabric GameTests 26.3 | 26/26 | Current local tree; includes cross-open-menu refresh regression |
+| Variant builds | 9/9 | Current local tree; legacy six-node and modern three-node build commands; warnings-as-errors policy retained |
+| Artifact audit | 9/9 | Current local tree; `scripts/audit_artifacts.py`; exact nine JARs and regenerated `SHA256SUMS` |
 | Download/publisher script tests | 16/16 | `python -m unittest scripts.test_download_utils scripts.test_publish_release` |
 | Publisher dry-run | PASS | Nine artifacts validated and 18 platform upload mappings resolved; no network request |
-| Official dedicated servers | 9/9 | RC Release workflow run [39282161012](https://github.com/Jovinull/Chestwise/actions/runs/39282161012) |
-| Quilt dedicated servers | 3/3 | Same RC Release workflow run; exact artifact hashes listed below |
+| Official dedicated servers | 9/9 on earlier RC artifacts | Run 39282161012; the current common-code follow-up requires the branch Release workflow to repeat this gate before its result is called current. |
+| Quilt dedicated servers | 3/3 on earlier RC artifacts | Run 39282161012; the current branch Release workflow will recheck the Fabric artifacts. |
 | RC Build and test workflow | PASS, 16/16 jobs | [39282152711](https://github.com/Jovinull/Chestwise/actions/runs/39282152711) |
 | RC Release workflow | PASS; package, loader-smoke 9/9, quilt-smoke 3/3; publishing skipped | [39282161012](https://github.com/Jovinull/Chestwise/actions/runs/39282161012) |
 
@@ -48,15 +56,19 @@ The current-main CI baseline was `Build and test` run
 16/16 jobs passed. The RC-specific runs above additionally validate the
 modified workflow files and publisher validation on the pushed candidate.
 
-Clean-worktree commands were the six legacy `build` tasks, the three 26.3
-`build` tasks, all nine `test` tasks, and the three Fabric
-`runGameTestServer` tasks. The modern unit tasks were explicitly rerun; the
-aggregate XML result was 369 tests with no failures, errors, or skips.
+The current-tree build commands were the six legacy `build` tasks and three
+26.3 `build` tasks. All nine active JUnit report roots contain 42 tests each,
+for 378 tests with no failures, errors, or skips. The three Fabric
+`runGameTestServer` tasks were rerun and discovered the totals shown above.
+The 26.3 Windows Forge-family server smokes emitted a Log4j appender exception
+while Netty probed Linux-only native transports; both loaders fell back, loaded
+Chestwise, reached `Done`, and exited cleanly. This is recorded as Windows /
+third-party runtime logging noise, not as a Chestwise exception.
 
 ## Client and feature runtime evidence
 
 Existing manual evidence in [`testing.md`](testing.md) remains applicable to
-the unchanged game code and matching release JARs:
+the unchanged gameplay code and matching release JARs:
 
 - Minecraft 1.21.1 Fabric: terminal GUI at Auto/2/3 scales; search filtering,
   clearing and focus; ESC and inventory-key behavior; tooltips, counters,
@@ -72,29 +84,147 @@ the unchanged game code and matching release JARs:
   1.21.1, and 26.3: world load, terminal placement/render, screen open, search
   input, and Escape close. These do not certify the full feature walkthrough.
 
+On 2026-10-21, the isolated 1.20.1 Fabric client used the current production
+artifact, SHA-256
+`cfd26ad6821659642d5eb112f854815d6231fa31641afaadbe8ff693903ea0ce`. At GUI
+scale 2, the corrected Crafting heading was visible and did not overlap the
+mode button. Search for `oak` filtered the list and the tooltip showed the
+exact total. Left-click withdrew and returned a 64-item stack; right-click
+withdrew 32 and returned one, with the remaining cursor stack deposited back.
+Crafting consumed one oak log and produced four planks; the shared grid's 63
+remaining logs, recalculated result, and player output survived save, quit,
+and reopen. Restock filled a 64-log target and a 64-torch target; 47 torches
+were taken from storage while the 17 torches in a protected hotbar slot stayed
+untouched. The local launcher logged authentication HTTP 401/profile-key
+errors in offline testing; the world itself ran and no Chestwise exception was
+found. This is a substantial 1.20.1 session, but not every release control was
+retested there.
+
+On 2026-10-21, the isolated 1.21.1 Fabric client used the current production
+artifact, SHA-256
+`3b0a95e63597c86756e81cc947519bb687c1f2af30e6366be0b3bdc99cc5864c`. It
+loaded the disposable world, rendered and opened the terminal, filtered with
+`oak`, withdrew eight oak logs, and used Deposit All to return them. The
+aggregate count returned to its starting value, and the world was saved and
+closed cleanly. This is a current-artifact UI/transfer smoke, not the full
+feature walkthrough; a vanilla tutorial toast obscured part of the screen in
+this prepared world. No Chestwise exception was found in the log.
+
+A second 1.21.1 Fabric session with that same artifact reopened the prepared
+world, filtered the list to 12 diamonds, changed the sort mode to Name, and
+saved/closed the world. Search and sort were observed in the live GUI; this
+short follow-up did not repeat withdrawal or deposit.
+
+The current 26.3 Forge artifact, SHA-256
+`5a6a7290266a35e4efa26661ac56652e7cea710b96c22f407251fec17f3d5302`, loaded
+the prepared world, rendered and opened the terminal, and accepted search
+field input. The current 26.3 NeoForge artifact, SHA-256
+`320ae7fe9f113b7599fa0d452cccd95270d781f23c29e50e2d39e55307c4128d`, loaded
+the prepared world, placed and rendered the terminal, opened its screen, and
+filtered the storage list with `log`. Both logs show Chestwise discovery and
+initialization, with no Chestwise classloading or runtime exception. The Forge
+instance also logged two Upgraded Iron Chests mixin-configuration errors and a
+RenderPearl minimized-window exception while the game window was minimized;
+the client recovered, and none was attributed to Chestwise. These were
+current-artifact client/screen smokes, not full feature walkthroughs.
+
+Additional local 26.3 Fabric runtime follow-up on 2026-10-19 used the then-current
+production JAR hash `0cb0b5cc0c1e3a13eb7df38833efb0f5439ddfd0c3ed7100074dda46b4a7df32`
+in the isolated Prism client and a disposable Fabric
+dedicated server bound to `127.0.0.1:25586`. One player client session
+placed/opened the terminal, filtered the aggregate view with `arrow`, cleared
+the search, and created an arrow target of 64. Starting with one arrow in the
+player inventory and 64 in a physical chest, Restock ended with 64 in the
+player inventory and one in the chest (63 moved). After `save-all`, graceful
+server shutdown, restart, and client reconnect, the target still displayed as
+64. The server's Overworld SavedData file was present at
+`dimensions/minecraft/overworld/data/chestwise/restock_targets.dat`.
+
+The same session picked up a 64-arrow player stack and deposited it through the
+aggregate display; the UI reported 65 available when combined with the one
+stored arrow. A right-click withdrawal followed by a right-click carried-item
+deposit left 31 on the cursor, which was then placed in an empty player slot.
+This exercised the left/right carried-stack paths and cursor placement, but was
+not a full capacity-boundary test. This was one player, not multiplayer; after
+the second server start the console input was unavailable, so the final physical
+inventory count was not independently queried from the server. No Chestwise
+exception appeared in the client/server logs. The client had Storage Drawers
+installed; its missing hopper-model particle warning and Minecraft's missing
+`end_of_frame` post-effect warning were unrelated to Chestwise. The test server
+was offline-mode and loopback-only, so it is not evidence of authenticated
+multiplayer safety.
+
+A second 26.3 Fabric client session on the same date used that same then-current
+production JAR hash and a disposable server bound to `127.0.0.1:25587`. It exercised
+`oak` search/clear, crafting one oak log into four planks, and a torch Restock
+target of 64: with 16 torches in the player inventory and 64 in a physical
+container, Restock moved 48, leaving 64 with the player and 16 in storage.
+Quick Stack moved matching bread, arrows, planks, and torches while leaving
+unmatched cobblestone and a pickaxe in the player inventory; Deposit All then
+moved those remaining stacks. A carried 10-cobblestone stack was deposited to
+storage, and right-clicking with five cobblestone moved one while leaving four
+on the cursor. Closing the screen returned those four to the player inventory.
+After saving, clean server shutdown/restart, and reconnect, the terminal and
+physical storage remained available and the torch-64 Restock target appeared in
+the target view. No Chestwise exception was observed in the client/server logs.
+This was still one player on an offline-mode loopback server, not multiplayer.
+
+On 2026-10-21, two independent clients (RCAlpha and RCBravo) connected to a
+disposable 26.3 Fabric dedicated server on loopback using the current artifact
+SHA-256 `737329c2e76df7a32da952d5e428be2491fae9e872a5e387d4e6f738d47d1925`.
+With 64 iron ingots in a shared chest, close-together withdrawals ended with
+64 in RCAlpha, none in RCBravo, and none in the chest. In the deposit/withdraw
+scenario, 64 player iron plus 32 chest iron remained 96 total after one client
+Deposit Matching and the other withdrew 64 (32 chest, 64 on the receiver,
+depositor empty). For Restock, the source had 64 arrows and each player held
+one with a target of 64; after both actions, RCAlpha had 64, RCBravo had 2,
+and the chest was empty (66 total before and after). RCBravo then disconnected
+while its terminal/target UI was open; RCAlpha continued operating without a
+lock or Chestwise exception, and the server shut down cleanly. The requests
+were processed on the authoritative server thread, not synchronized as a
+packet-race stress test. This was offline-mode loopback, not authenticated
+public-server testing.
+
+Three real listing screenshots from this 26.3 Fabric client session are
+committed at `docs/images/storage-room.png`,
+`docs/images/terminal-closeup.png`, and
+`docs/images/terminal-gui-crafting.png`. The GUI image shows a live crafting
+result and storage/player slots. A separate
+[post-restart Restock target capture](images/rc-restock-persistence.png) shows
+the target view after reconnect. These captures do not substitute for the
+three-line feature walkthrough.
+
+The current 26.3 Forge and NeoForge client startup/screen smokes were completed
+in isolated Prism instances: world load, terminal placement/render, item model,
+screen open, search input, and close. They were smoke tests, not full feature
+walkthroughs.
+
 The release-requested full client walkthrough (withdraw, deposit, craft,
 Restock, save/reopen, and log review) has not been performed on all three
-official Fabric lines. Current RC Forge and NeoForge client screens have not
-been smoke-tested. No listing screenshots have been captured from the actual
-candidate client.
+official Fabric lines on the current artifacts. The current 1.20.1 session
+covered most of that flow; 1.21.1 was a shorter search/withdraw/deposit smoke;
+26.3's feature and two-client evidence is described below. The 26.3
+Forge/NeoForge runs above were limited startup and screen smokes.
 
 ## Multiplayer, lifecycle, performance, and storage compatibility
 
 | Gate | Current evidence | Status |
 | --- | --- | --- |
-| Two independent players mutating the same source | No real two-client dedicated-server session performed | OPEN release blocker |
-| Disconnect while interacting | Not tested in a two-client session | OPEN |
+| Two independent players mutating the same source | On 2026-10-21, two separate Prism clients (RCAlpha and RCBravo) connected to a disposable 26.3 Fabric dedicated server in offline-mode loopback. Iron contention conserved 64 total (one player received 64, the other 0, source 0). Deposit Matching versus withdraw conserved 96 (source 32, withdrawing player's cursor 64, depositor 0). Two Restock targets against 64 stored arrows plus one held by each ended at 64 and 2 player arrows, source 0 (66 total). Requests were close together but serialized on the server thread; this was not a deliberately synchronized packet-race test or authenticated public-server test. | PASS — bounded two-client test |
+| Disconnect while interacting | One client disconnected with the terminal/target UI open; the other continued withdrawing from the shared source. No lock, Chestwise exception, or stalled menu was observed; server shut down cleanly. Counts were checked for the contention scenarios above, not as a separate disconnect race. | PASS — bounded offline-mode test |
 | Container removal, chunk unload/reload, distance | Several invalidation cases have GameTest coverage; no complete real-runtime lifecycle walkthrough recorded | PARTIAL / OPEN |
-| 128-inventory load/soak with thousands of variants | No soak run or measurements recorded | OPEN release blocker |
-| No force-loading during discovery | No explicit observed chunk-boundary soak evidence recorded | OPEN |
-| Third-party storage contracts | No named third-party storage implementation was runtime-tested | OPEN release blocker |
-| Current-version save/reopen | Restock persistence was observed on 1.21.1 Fabric; no complete 26.3 candidate-world round trip recorded | PARTIAL |
+| Mixed-inventory load/soak near configured maximum | Disposable Forge 26.3 world used 127 barrels (3,429 slots; about 3,425 occupied; about 31 item identities, including damaged swords). Two measured windows totaled 4,115 ticks / 205.71 seconds at about 20 TPS; RSS was 2.86→2.84 GB and private bytes 3.143→3.120 GB. Search, namespace/tag filtering, sorting, withdrawal, Deposit All, and Restock were exercised; no Chestwise exception or obvious tick/memory pathology observed. This was a short synthetic run, not the requested mixed-container/long soak with thousands of distinct identities or concurrent mutations. | PARTIAL / OPEN |
+| No force-loading during discovery | During the synthetic run `/forceload query` reported no forced chunks after setup; no chunk-ticket profiler was used and natural unload/reload was not covered | PARTIAL / OPEN |
+| Third-party storage contracts | Storage Drawers `26.3.0.1+fabric` on Fabric 26.3; Upgraded Iron Chests `1.5` on Forge 26.3; Sophisticated Storage `26.3-1.5.124.2189` + Core `26.3-1.5.17.2421` on NeoForge 26.3. All three were discovered and exercised for withdrawal/insertion without observed duplication; this is limited spot coverage, not blanket compatibility. The Sophisticated chest held 17 emeralds; Chestwise withdrew 8, returned them, and the 17-item count survived save/reopen. NeoForge Storage Drawers separately failed at startup with upstream `NoSuchFieldError: ModConfig$Type.COMMON`. | PASS — representative contracts only |
+| Current-version save/reopen | Forge 26.3 world round trip preserved terminal crafting contents (64 planks), recomputed result, and a 32-torch Restock target. Fabric 26.3 follow-up also preserved the 64-arrow target after dedicated-server restart/reconnect. | PASS for these tested states |
 | 26.2 to 26.3 world migration | Exercised during the 26.3 port; see historical port evidence | Prior evidence |
-| Uninstall with physical inventories | No backed-up-world removal test recorded | OPEN release blocker |
+| Uninstall with physical inventories | On a backed-up disposable NeoForge 26.3 world, Chestwise was removed and the copy opened without it. The loader warned about the missing `chestwise:storage_terminal`, skipped that block entity, and reported the terminal item missing from the player inventory. The Sophisticated physical chest still contained all 17 emeralds. | PASS for physical-storage retention; missing Chestwise content is expected |
 
-No specific Storage Drawers, Sophisticated Storage, Iron Chests, or other
-third-party mod is claimed as tested. Compatibility documentation describes
-loader-standard inventory contracts, not certification of named mods.
+Only the exact combinations listed above are claimed as runtime-tested. A
+NeoForge Storage Drawers startup failure is not attributed to Chestwise: the
+upstream mod failed while resolving its config enum before an inventory
+integration test could run. The loader-standard contract remains a compatibility
+expectation, not certification of all mods that advertise it.
 
 ## Recipe viewers
 
@@ -122,7 +252,9 @@ The GitHub source/issue URL is `https://github.com/Jovinull/Chestwise`. The
 listing draft and release notes are in
 [`release-listing-0.1.0.md`](release-listing-0.1.0.md) and
 [`release-notes-0.1.0.md`](release-notes-0.1.0.md). The actual mod icon exists;
-the three required listing screenshots are not yet captured.
+the three listing screenshots are captured from the 26.3 Fabric production
+client and listed in the draft. The broader cross-version client walkthrough
+remains open.
 
 The Release workflow packages nine artifacts and has an offline publishing
 mapping validator. Its publisher validates exact paths, checksums, embedded
@@ -142,20 +274,21 @@ SHA before pushing it.
 
 ## Production artifacts
 
-These are the nine release JARs from the clean build. Each hash matched the
-corresponding file downloaded from the successful main Release workflow.
+The hashes below were regenerated from the current local RC working tree after
+the menu fixes and regression test. These are not yet CI-tag artifacts; they
+must be regenerated by the eventual approved tag workflow before publication.
 
 | File | Size (bytes) | SHA-256 |
 | --- | ---: | --- |
-| `chestwise-fabric-1.20.1-0.1.0.jar` | 154434 | `98c73ae6357fa49592d096a6a0ffc9866f12f8d42842e3372ccbf15b0cfee79c` |
-| `chestwise-forge-1.20.1-0.1.0.jar` | 158283 | `9aa933b41dddb8638428b8f6e0216b24228959cc57474c44e7a59555bf8bd8a6` |
-| `chestwise-neoforge-1.20.1-0.1.0.jar` | 156384 | `129cb1742f3ad3014755c83c1c2b664916275b9014f307588060ffbc9d328a94` |
-| `chestwise-fabric-1.21.1-0.1.0.jar` | 156020 | `6977c3a6bbebe226446fee8c77864aa6ad951ac34cec72f387f3d9494f409155` |
-| `chestwise-forge-1.21.1-0.1.0.jar` | 155171 | `ff7e0f04035696f10f374d3c79777f302d33aea708b4d1cb929082122f141ff2` |
-| `chestwise-neoforge-1.21.1-0.1.0.jar` | 158007 | `70e83de5dee1597ec9777dc82003cbdeec55c0146116897702db37541909ab1f` |
-| `chestwise-fabric-26.3-0.1.0.jar` | 159239 | `2ec175457101003df8a3f2aaeb8fa9eb5967a9e2a5526b5ead8f2496193eb724` |
-| `chestwise-forge-26.3-0.1.0.jar` | 154985 | `e4deab98f56a72d5713ee5017e51e5eec865cf63180f878a8d44d1a8ab4afe22` |
-| `chestwise-neoforge-26.3-0.1.0.jar` | 160410 | `efec1f41f845a57cb3f1c7083794983d80b86c02be57097fbc3fdaf868f4ddc9` |
+| `chestwise-fabric-1.20.1-0.1.0.jar` | 155813 | `cfd26ad6821659642d5eb112f854815d6231fa31641afaadbe8ff693903ea0ce` |
+| `chestwise-forge-1.20.1-0.1.0.jar` | 159673 | `e38a4345e034f106b31a88f897200331e29fa33ae0a6bf1767960a71016eebe3` |
+| `chestwise-neoforge-1.20.1-0.1.0.jar` | 157756 | `9fd267d9fc8d13c9ba2f607e318ca9d4d43524d700b1d3b0d89ecad35702d575` |
+| `chestwise-fabric-1.21.1-0.1.0.jar` | 157420 | `3b0a95e63597c86756e81cc947519bb687c1f2af30e6366be0b3bdc99cc5864c` |
+| `chestwise-forge-1.21.1-0.1.0.jar` | 156566 | `26781b42b5c864abafff9accd8704796f36951d212b801555a6fb6124f567316` |
+| `chestwise-neoforge-1.21.1-0.1.0.jar` | 159402 | `2a21c8fc5c6e1d7b85a092ff6628212bf134d38ae6a117bbdb846a231f2487c5` |
+| `chestwise-fabric-26.3-0.1.0.jar` | 160677 | `737329c2e76df7a32da952d5e428be2491fae9e872a5e387d4e6f738d47d1925` |
+| `chestwise-forge-26.3-0.1.0.jar` | 156831 | `5a6a7290266a35e4efa26661ac56652e7cea710b96c22f407251fec17f3d5302` |
+| `chestwise-neoforge-26.3-0.1.0.jar` | 161848 | `320ae7fe9f113b7599fa0d452cccd95270d781f23c29e50e2d39e55307c4128d` |
 
 The artifact audit found no sources, tests/GameTests, fixtures, `.bbmodel`,
 viewer APIs, Fabric Loader classes, wrong-loader classes, logs, or temporary
@@ -164,9 +297,14 @@ files. Fabric production metadata has no `fabric-gametest` entrypoint.
 ## Evidence boundary and release decision
 
 Current evidence establishes the automated matrix, package integrity, server
-startup, Quilt smoke coverage, and the specific client/viewer behaviors listed
-above. It does not establish real multiplayer conservation, a 128-inventory
-soak, third-party storage compatibility, uninstall behavior, all-line full
-client walkthroughs, or ready-to-publish platform listings. Those are explicit
-open gates in [`release-checklist.md`](release-checklist.md); no public release
-or tag is approved by this evidence.
+startup, Quilt smoke coverage, the specific client/viewer behaviors, three
+representative third-party storage implementations, and limited synthetic load
+behavior, and physical-storage retention after Chestwise removal listed above.
+It now establishes bounded two-client conservation/disconnect behavior, but
+not an authenticated public-server test or a synchronized packet-race test.
+It also does not establish a long/diverse mixed-inventory soak, a complete
+current-artifact feature walkthrough on every official Fabric line, the full
+runtime lifecycle/no-force-loading matrix, or ready-to-publish platform
+listings. These remain explicit open gates in
+[`release-checklist.md`](release-checklist.md); no public release or tag is
+approved by this evidence.

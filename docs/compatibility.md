@@ -18,10 +18,22 @@ their physical slot ownership without counting one half twice.
 
 An inventory mod should work when its placed block exposes the standard contract
 for the active loader and implements simulation consistently. This is an API
-compatibility statement, not a claim that every version of Storage Drawers,
-Sophisticated Storage, Create, Iron Chests, or another third-party mod has been
-certified. Explicit combinations belong in the release checklist only after a
-real integration test with the published dependency set.
+compatibility expectation, not a claim that every mod implementing that contract
+has been certified. The following exact combinations received bounded runtime
+spot checks; see [`release-evidence-0.1.0.md`](release-evidence-0.1.0.md) for
+scope and limitations.
+
+| Mod | Minecraft / loader | Runtime result |
+| --- | --- | --- |
+| Storage Drawers `26.3.0.1+fabric` | 26.3 Fabric | Discovered; withdrawal and insertion exercised without observed duplication. |
+| Upgraded Iron Chests `1.5` | 26.3 Forge | Discovered; withdrawal and insertion exercised without observed duplication. |
+| Sophisticated Storage `26.3-1.5.124.2189` + Sophisticated Core `26.3-1.5.17.2421` | 26.3 NeoForge | Indexed 17 emeralds; withdrew 8 and returned them, leaving 17 in the physical chest; the count survived save/reopen. |
+
+NeoForge Storage Drawers did not reach an integration test: that mod failed at
+startup with `NoSuchFieldError: ModConfig$Type.COMMON`. This is recorded as an
+upstream startup incompatibility for that attempted combination, not a
+Chestwise compatibility result. These spot checks do not certify other versions
+or every implementation of the loader APIs.
 
 ## Recipe viewers
 

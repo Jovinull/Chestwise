@@ -42,13 +42,18 @@ or chunk loading.
 
 ## Listing screenshots
 
-Capture from the actual release-candidate client; do not mock or composite UI.
-Required set:
+These are unedited screenshots from the actual Minecraft 26.3 Fabric RC client
+using a production Chestwise JAR. The world was a disposable server-prepared
+storage room; no UI was mocked or composited. The first two images are room
+views at different distances, and the third shows the live terminal GUI.
 
-1. Storage Terminal placed in a room with ordinary physical chests/barrels.
-2. The open terminal GUI showing search, aggregated items, and crafting.
-3. A practical storage-room view that makes the terminal-to-physical-storage
-   relationship clear.
+1. [Storage room](images/storage-room.png) — Terminal with ordinary barrels,
+   crafting table, and room context.
+2. [Terminal close-up](images/terminal-closeup.png) — block model and adjacent
+   physical storage.
+3. [Terminal GUI and crafting](images/terminal-gui-crafting.png) — aggregated
+   storage items, crafting input/result, and player inventory.
 
-No screenshots are currently committed as listing assets. Capture and review
-these three images from the final candidate before submission.
+These assets are captured and reviewed for the listing draft. They document
+26.3 Fabric only; the broader release walkthrough on all official Fabric
+lines remains a separate gate.
