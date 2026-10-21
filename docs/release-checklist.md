@@ -17,9 +17,11 @@ only after evidence exists; the current status and evidence boundaries are in
   artifacts; this is not a claim of general Quilt-mod compatibility.
 - [x] Bounded-download and publishing-validation script tests pass (16/16); the
   offline publishing dry-run resolves nine artifacts and eighteen mappings.
-- [ ] Run `Build and test` and `Release` on the current committed RC state;
-  publishing must remain skipped. Earlier RC runs 39282152711 and 39282161012
-  passed before the current menu/count fixes and do not certify this candidate.
+- [x] Run `Build and test` and `Release` on the current committed RC code;
+  Build and test run [39654906809](https://github.com/Jovinull/Chestwise/actions/runs/39654906809)
+  passed 16/16, and Release run
+  [39654918799](https://github.com/Jovinull/Chestwise/actions/runs/39654918799)
+  passed packaging and loader/Quilt smokes. Publishing was correctly skipped.
 
 The clean build, GameTests, hashes, and RC workflow runs are recorded in
 [`release-evidence-0.1.0.md`](release-evidence-0.1.0.md).
