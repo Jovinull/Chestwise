@@ -16,15 +16,13 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+//? if >= 26.2 {
+/*import net.minecraft.client.input.MouseButtonEvent;
+*///?}
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.ChatFormatting;
-//? if < 26.2 {
-import net.minecraft.world.inventory.ClickType;
-//?} else {
-/*import net.minecraft.world.inventory.ContainerInput;
-*///?}
 
 public final class StorageTerminalScreen extends AbstractContainerScreen<StorageTerminalMenu> {
     /** GLFW Escape key used by the legacy key-event branch. */
@@ -134,27 +132,50 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
     }
 
     @Override
-    protected void slotClicked(
-        Slot slot,
-        int slotId,
-        int button,
-        //? if < 26.2 {
-        ClickType clickType
-        //?} else {
-        /*ContainerInput clickType
-        *///?}
-    ) {
-        if (preferences != null && slot != null && slotId >= StorageTerminalMenu.PLAYER_START
-            && button == 2
-            //? if < 26.2 {
-            && clickType == ClickType.PICKUP
-            //?} else {
-            /*&& clickType == ContainerInput.PICKUP
-            *///?}
-        ) {
-            preferences.toggleProtectedSlot(slot.getContainerSlot());
+    //? if < 26.2 {
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 2 && handleMiddleClick(mouseX, mouseY)) {
+            return true;
         }
-        super.slotClicked(slot, slotId, button, clickType);
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+    //?} else {
+    /*public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (event.button() == 2 && handleMiddleClick(event.x(), event.y())) {
+            return true;
+        }
+        return super.mouseClicked(event, doubleClick);
+    }
+    *///?}
+
+    private boolean handleMiddleClick(double mouseX, double mouseY) {
+        if (minecraft == null || minecraft.gameMode == null) {
+            return false;
+        }
+        for (Slot slot : menu.slots) {
+            if (!slot.isActive()
+                || mouseX < leftPos + slot.x || mouseX >= leftPos + slot.x + 16
+                || mouseY < topPos + slot.y || mouseY >= topPos + slot.y + 16) {
+                continue;
+            }
+            if (slot.index >= StorageTerminalMenu.PLAYER_START && slot.index < StorageTerminalMenu.PLAYER_END) {
+                int inventorySlot = slot.getContainerSlot();
+                if (preferences != null) {
+                    preferences.toggleProtectedSlot(inventorySlot);
+                }
+                minecraft.gameMode.handleInventoryButtonClick(
+                    menu.containerId,
+                    StorageTerminalMenu.BUTTON_PROTECT_BASE + inventorySlot
+                );
+                return true;
+            }
+            if (!menu.targetView() && slot.index >= 0 && slot.index < StorageTerminalMenu.DISPLAY_SLOTS) {
+                sendButton(StorageTerminalMenu.BUTTON_LOCATE_BASE + slot.index);
+                return true;
+            }
+            return false;
+        }
+        return false;
     }
 
     private Button button(int x, int y, int width, String label, int id) {
@@ -301,7 +322,7 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
         if (count <= 1) {
             return;
         }
-        String label = AggregateCountFormat.compact(count);
+        String label = AggregateCountFormat.compactForSlot(count);
         int columns = menu.targetView() ? 3 : StorageTerminalMenu.COLUMNS;
         int x = leftPos + 8 + slot % columns * 18 + 17 - font.width(label);
         int y = topPos + 32 + slot / columns * 18 + 9;
@@ -318,9 +339,8 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
                 && slot.index < StorageTerminalMenu.RESTOCK_START + StorageTerminalMenu.RESTOCK_VISIBLE_TARGETS) {
                 long count = menu.restockTargetCount(slot.getContainerSlot());
                 if (count > 1) {
-                    String label = AggregateCountFormat.compact(count);
-                    graphics.text(font, Component.literal(label),
-                        slot.x + 17 - font.width(label), slot.y + 9, 0xffffff, true);
+                    String label = AggregateCountFormat.compactForSlot(count);
+                    graphics.itemDecorations(font, slot.getItem(), slot.x, slot.y, label);
                 }
             }
             return;
@@ -332,8 +352,8 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
         if (count <= 1) {
             return;
         }
-        String label = AggregateCountFormat.compact(count);
-        graphics.text(font, Component.literal(label), slot.x + 17 - font.width(label), slot.y + 9, 0xffffff, true);
+        String label = AggregateCountFormat.compactForSlot(count);
+        graphics.itemDecorations(font, slot.getItem(), slot.x, slot.y, label);
     }
     *//*?}*/
 
@@ -469,8 +489,8 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
             ? Component.translatable("gui.chestwise.restock.targets") : title;
         graphics.drawString(font, screenTitle, titleLabelX, titleLabelY, 0x303030, false);
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x303030, false);
-        // Sits on the dark panel now, so it needs the light ink.
-        graphics.drawString(font, Component.translatable("gui.chestwise.crafting"), 180, 19, 0xe0e0e0, false);
+        // This heading sits in the light top margin above the crafting panel.
+        graphics.drawString(font, Component.translatable("gui.chestwise.crafting"), 180, 6, 0x303030, false);
         Component pageText = menu.targetView()
             ? Component.translatable("gui.chestwise.page", menu.targetPage() + 1, menu.targetPageCount())
             : Component.translatable("gui.chestwise.page", menu.page() + 1, menu.totalPages());
@@ -478,14 +498,14 @@ public final class StorageTerminalScreen extends AbstractContainerScreen<Storage
         //?} else {
         /*Component screenTitle = menu.targetView()
             ? Component.translatable("gui.chestwise.restock.targets") : title;
-        graphics.text(font, screenTitle, titleLabelX, titleLabelY, 0x303030, false);
-        graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x303030, false);
-        // Sits on the dark panel now, so it needs the light ink.
-        graphics.text(font, Component.translatable("gui.chestwise.crafting"), 180, 19, 0xe0e0e0, false);
+        graphics.text(font, screenTitle, titleLabelX, titleLabelY, 0xff303030, false);
+        graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0xff303030, false);
+        // This heading sits in the light top margin above the crafting panel.
+        graphics.text(font, Component.translatable("gui.chestwise.crafting"), 180, 6, 0xff303030, false);
         Component pageText = menu.targetView()
             ? Component.translatable("gui.chestwise.page", menu.targetPage() + 1, menu.targetPageCount())
             : Component.translatable("gui.chestwise.page", menu.page() + 1, menu.totalPages());
-        graphics.text(font, pageText, 116, 6, 0x303030, false);
+        graphics.text(font, pageText, 116, 6, 0xff303030, false);
         *///?}
     }
 

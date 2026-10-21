@@ -62,6 +62,7 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
     public static final int BUTTON_SCROLL_WITHDRAW_BASE = 100;
     public static final int BUTTON_SCROLL_DEPOSIT_BASE = 200;
     public static final int BUTTON_PROTECT_BASE = 300;
+    public static final int BUTTON_LOCATE_BASE = 400;
     public static final int BUTTON_RESTOCK = 5;
     public static final int BUTTON_TARGET_VIEW = 6;
     public static final int BUTTON_ADD_TARGET = 7;
@@ -89,6 +90,7 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
     private SortMode sortMode = SortMode.QUANTITY;
     private int page;
     private int totalPages = 1;
+    private long displayedStorageRevision = Long.MIN_VALUE;
 
     public StorageTerminalMenu(int containerId, Inventory inventory) {
         this(containerId, inventory, null);
@@ -260,6 +262,11 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         if (terminal == null) {
             return;
         }
+        refreshStorageDisplay();
+        broadcastChanges();
+    }
+
+    private void refreshStorageDisplay() {
         List<IndexedItem> results = terminal.search(query, sortMode);
         totalPages = Math.max(1, (results.size() + DISPLAY_SLOTS - 1) / DISPLAY_SLOTS);
         page = Math.min(page, totalPages - 1);
@@ -285,7 +292,15 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             displayCounts[slot] = indexed.totalCount();
             identities.set(slot, indexed.descriptor().identity());
         }
-        broadcastChanges();
+        displayedStorageRevision = terminal.storageIndexRevision();
+    }
+
+    @Override
+    public void broadcastChanges() {
+        if (terminal != null && terminal.storageIndexRevision() != displayedStorageRevision) {
+            refreshStorageDisplay();
+        }
+        super.broadcastChanges();
     }
 
     private void refreshRestockTargetDisplay() {
@@ -406,7 +421,7 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             // Virtual display slots only implement ordinary pickup and
             // quick-move. In particular, vanilla's double-click PICKUP_ALL
             // must not be interpreted as another withdrawal from this slot.
-            if (!isPickup(clickType) && !isQuickMove(clickType)) {
+            if (!isPickup(clickType) && !isQuickMove(clickType) && !isMiddleClick(button, clickType)) {
                 return;
             }
             // Dropping a held stack onto the grid has to store it. Without this
@@ -418,7 +433,8 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             withdraw(slotId, button, clickType, player);
             return;
         }
-        if (terminal != null && slotId >= PLAYER_START && button == 2 && isPickup(clickType)) {
+        if (terminal != null && slotId >= PLAYER_START && slotId < PLAYER_END
+            && isMiddleClick(button, clickType)) {
             int inventorySlot = slots.get(slotId).getContainerSlot();
             toggleProtected(inventorySlot);
             broadcastChanges();
@@ -442,45 +458,8 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         if (identity == null || shown.isEmpty() || !terminal.canUse(player)) {
             return;
         }
-        if (button == 2 && isPickup(clickType) && player instanceof ServerPlayer serverPlayer) {
-            terminal.locateNearest(identity, player).ifPresent(position -> {
-                serverPlayer.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
-                    "gui.chestwise.located",
-                    position.getX(),
-                    position.getY(),
-                    position.getZ()
-                ), true);
-                //? if < 26.2 {
-                serverPlayer.serverLevel().sendParticles(
-                    serverPlayer,
-                    ParticleTypes.END_ROD,
-                    true,
-                    position.getX() + 0.5,
-                    position.getY() + 1.1,
-                    position.getZ() + 0.5,
-                    18,
-                    0.45,
-                    0.55,
-                    0.45,
-                    0.01
-                );
-                //?} else {
-                /*serverPlayer.level().sendParticles(
-                    serverPlayer,
-                    ParticleTypes.END_ROD,
-                    true,
-                    true,
-                    position.getX() + 0.5,
-                    position.getY() + 1.1,
-                    position.getZ() + 0.5,
-                    18,
-                    0.45,
-                    0.55,
-                    0.45,
-                    0.01
-                );
-                *///?}
-            });
+        if (isMiddleClick(button, clickType) && player instanceof ServerPlayer serverPlayer) {
+            locate(displaySlot, serverPlayer);
             return;
         }
         boolean quickMove = isQuickMove(clickType);
@@ -525,6 +504,55 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
             getCarried().grow(extracted.getCount());
         }
         refresh();
+    }
+
+    private void locate(int displaySlot, Player player) {
+        if (terminal == null || displaySlot < 0 || displaySlot >= DISPLAY_SLOTS
+            || !(player instanceof ServerPlayer serverPlayer) || !terminal.canUse(player)) {
+            return;
+        }
+        ItemIdentity identity = identities.get(displaySlot);
+        if (identity == null || display.getItem(displaySlot).isEmpty()) {
+            return;
+        }
+        terminal.locateNearest(identity, player).ifPresent(position -> {
+            serverPlayer.sendSystemMessage(Component.translatable(
+                "gui.chestwise.located",
+                position.getX(),
+                position.getY(),
+                position.getZ()
+            ), true);
+            //? if < 26.2 {
+            serverPlayer.serverLevel().sendParticles(
+                serverPlayer,
+                ParticleTypes.END_ROD,
+                true,
+                position.getX() + 0.5,
+                position.getY() + 1.1,
+                position.getZ() + 0.5,
+                18,
+                0.45,
+                0.55,
+                0.45,
+                0.01
+            );
+            //?} else {
+            /*serverPlayer.level().sendParticles(
+                serverPlayer,
+                ParticleTypes.END_ROD,
+                true,
+                true,
+                position.getX() + 0.5,
+                position.getY() + 1.1,
+                position.getZ() + 0.5,
+                18,
+                0.45,
+                0.55,
+                0.45,
+                0.01
+            );
+            *///?}
+        });
     }
 
     @Override
@@ -683,6 +711,13 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         if (id >= BUTTON_PROTECT_BASE && id < BUTTON_PROTECT_BASE + PLAYER_STORAGE_SLOTS) {
             toggleProtected(id - BUTTON_PROTECT_BASE);
             broadcastChanges();
+            return true;
+        }
+        if (id >= BUTTON_LOCATE_BASE && id < BUTTON_LOCATE_BASE + DISPLAY_SLOTS) {
+            if (targetView) {
+                return false;
+            }
+            locate(id - BUTTON_LOCATE_BASE, player);
             return true;
         }
         switch (id) {
@@ -1208,6 +1243,34 @@ public final class StorageTerminalMenu extends AbstractContainerMenu {
         return input == ClickType.QUICK_CRAFT;
         //?} else {
         /*return input == ContainerInput.QUICK_CRAFT;
+        *///?}
+    }
+
+    private static boolean isMiddleClick(
+        int button,
+        //? if < 26.2 {
+        ClickType input
+        //?} else {
+        /*ContainerInput input
+        *///?}
+    ) {
+        // Vanilla routes the configured pick-block mouse button through the
+        // container click path as CLONE, not PICKUP. QUICK_CRAFT encodes its
+        // stage in `button`, so it must never be treated as a middle click.
+        return button == 2 && (isPickup(input) || isClone(input));
+    }
+
+    private static boolean isClone(
+        //? if < 26.2 {
+        ClickType input
+        //?} else {
+        /*ContainerInput input
+        *///?}
+    ) {
+        //? if < 26.2 {
+        return input == ClickType.CLONE;
+        //?} else {
+        /*return input == ContainerInput.CLONE;
         *///?}
     }
 

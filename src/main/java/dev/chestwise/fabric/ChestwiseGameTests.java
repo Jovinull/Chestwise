@@ -85,6 +85,51 @@ public final class ChestwiseGameTests implements FabricGameTest {
     }
 
     //? if < 26.2 {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60)
+    //?} else {
+    /*@GameTest(maxTicks = 60)
+    *///?}
+    public void otherOpenTerminalMenuRefreshesAfterStorageMutation(GameTestHelper helper) {
+        BlockPos terminalPosition = new BlockPos(1, 1, 1);
+        BlockPos chestPosition = new BlockPos(3, 1, 1);
+        helper.setBlock(terminalPosition, ChestwiseContent.STORAGE_TERMINAL);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        //? if < 26.2 {
+        Container chest = (Container) helper.getBlockEntity(chestPosition);
+        StorageTerminalBlockEntity terminal = (StorageTerminalBlockEntity) helper.getBlockEntity(terminalPosition);
+        //?} else {
+        /*Container chest = helper.getBlockEntity(chestPosition, ChestBlockEntity.class);
+        StorageTerminalBlockEntity terminal = helper.getBlockEntity(terminalPosition, StorageTerminalBlockEntity.class);
+        *///?}
+        chest.setItem(0, new ItemStack(Items.BLAZE_POWDER, 64));
+
+        helper.runAfterDelay(15, () -> {
+            ServerPlayer firstPlayer = restockPlayer(helper, terminal);
+            ServerPlayer secondPlayer = restockPlayer(helper, terminal);
+            StorageTerminalMenu first = new StorageTerminalMenu(40, firstPlayer.getInventory(), terminal);
+            StorageTerminalMenu second = new StorageTerminalMenu(41, secondPlayer.getInventory(), terminal);
+            first.updateQuery("blaze powder");
+            second.updateQuery("blaze powder");
+            helper.assertTrue(first.displayCount(0) == 64 && second.displayCount(0) == 64,
+                "Both open menus should initially display the same physical storage count");
+
+            clickPickup(first, 0, firstPlayer);
+            helper.assertTrue(chest.getItem(0).isEmpty(), "The first menu did not withdraw the physical stack");
+            helper.assertTrue(second.displayCount(0) == 64,
+                "The second menu should not be considered refreshed before its server broadcast");
+            second.broadcastChanges();
+            helper.assertTrue(second.displayCount(0) == 0 && second.getSlot(0).getItem().isEmpty(),
+                "The second open menu did not converge after storage revision " + terminal.storageIndexRevision()
+                    + "; displayed count=" + second.displayCount(0)
+                    + ", displayed item=" + second.getSlot(0).getItem());
+
+            first.removed(firstPlayer);
+            second.removed(secondPlayer);
+            helper.succeed();
+        });
+    }
+
+    //? if < 26.2 {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 40)
     //?} else {
     /*@GameTest(maxTicks = 40)
@@ -620,11 +665,15 @@ public final class ChestwiseGameTests implements FabricGameTest {
             menu.updateQuery("gold ingot");
             helper.assertTrue(menu.displayCount(0) == 10,
                 "Menu did not synchronize the exact aggregate count for its display slot");
+            helper.assertTrue(menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_LOCATE_BASE),
+                "Server rejected a valid locate intent from the aggregate grid");
+            helper.assertTrue(chest.getItem(0).getCount() == 10,
+                "Locate intent mutated the physical inventory");
 
             //? if < 26.2 {
-            menu.clicked(StorageTerminalMenu.PLAYER_START, 2, ClickType.PICKUP, player);
+            menu.clicked(StorageTerminalMenu.PLAYER_START, 2, ClickType.CLONE, player);
             //?} else {
-            /*menu.clicked(StorageTerminalMenu.PLAYER_START, 2, ContainerInput.PICKUP, player);
+            /*menu.clicked(StorageTerminalMenu.PLAYER_START, 2, ContainerInput.CLONE, player);
             *///?}
             helper.assertTrue(menu.isProtectedInventorySlot(9), "Middle click did not protect the player slot");
             helper.assertTrue(menu.clickMenuButton(player, StorageTerminalMenu.BUTTON_DEPOSIT_MATCHING),

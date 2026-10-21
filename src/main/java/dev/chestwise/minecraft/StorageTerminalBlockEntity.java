@@ -69,6 +69,10 @@ public final class StorageTerminalBlockEntity extends BlockEntity implements net
         return craftingResult;
     }
 
+    public long storageIndexRevision() {
+        return index.revision();
+    }
+
     /** Clears contents without changing the fixed nine-slot grid's size. */
     private void clearCraftingGrid() {
         for (int slot = 0; slot < craftingGrid.size(); slot++) {

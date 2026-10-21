@@ -10,6 +10,7 @@ import java.util.Optional;
 public final class IncrementalStorageIndex {
     private final Map<String, StorageView> sources = new HashMap<>();
     private final Map<ItemIdentity, MutableEntry> items = new HashMap<>();
+    private long revision;
 
     public synchronized boolean reconcile(StorageView updated) {
         StorageView previous = sources.get(updated.sourceId());
@@ -21,6 +22,7 @@ public final class IncrementalStorageIndex {
         }
         sources.put(updated.sourceId(), updated);
         addContributions(updated);
+        revision++;
         return true;
     }
 
@@ -30,7 +32,12 @@ public final class IncrementalStorageIndex {
             return false;
         }
         removeContributions(removed);
+        revision++;
         return true;
+    }
+
+    public synchronized long revision() {
+        return revision;
     }
 
     public synchronized Optional<IndexedItem> get(ItemIdentity identity) {
