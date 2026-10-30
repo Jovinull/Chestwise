@@ -39,14 +39,14 @@ The clean build, GameTests, hashes, and RC workflow runs are recorded in
   compile-tested only where listed in `compatibility.md`.
 - [ ] Complete the release walkthrough on official Fabric clients for 1.20.1,
   1.21.1, and 26.3: open, search, withdraw, deposit, craft, Restock, save,
-  reopen, and inspect logs.
-- Current-artifact spot checks on 2026-10-21 exercised the 1.20.1 Fabric UI,
-  search, transfer/crafting, Restock, and save/reopen, plus 1.21.1 Fabric world
-  load, search, withdrawal, Deposit All, and save/quit. They do not satisfy the
-  complete three-line walkthrough above.
+  reopen, and inspect logs. The 2026-10-30 current-artifact sessions added
+  coverage on all three lines, but did not exercise every requested control and
+  feature sequence on each line; see the evidence document.
 - [x] Smoke the current 26.3 Forge and NeoForge clients through world load,
-  terminal placement, rendering, and screen open; these were startup/screen
-  smokes, not full feature walkthroughs.
+  terminal placement, rendering, screen open, and search input; 2026-10-30
+  logs contain no Chestwise exception. These remain startup/screen smokes, not
+  full feature walkthroughs. NeoForge also warned about low disk space; do not
+  treat that session as save/reopen evidence.
 - [ ] Exercise the remaining mouse/keyboard controls and full-inventory,
   protected-slot, and Deposit Matching/Deposit All cases on the candidate.
 - [x] Capture and review the three actual listing screenshots described in
