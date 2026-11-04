@@ -39,16 +39,22 @@ The clean build, GameTests, hashes, and RC workflow runs are recorded in
   compile-tested only where listed in `compatibility.md`.
 - [ ] Complete the release walkthrough on official Fabric clients for 1.20.1,
   1.21.1, and 26.3: open, search, withdraw, deposit, craft, Restock, save,
-  reopen, and inspect logs. The 2026-10-30 current-artifact sessions added
-  coverage on all three lines, but did not exercise every requested control and
-  feature sequence on each line; see the evidence document.
+  reopen, and inspect logs. Focused current-artifact sessions on 2026-11-04
+  confirmed 1.20.1 search/sort/screen close and 1.21.1 crafting/Restock/save-
+  reopen, but neither completed the full sequence; 26.3 evidence is also
+  partial. See the evidence document.
 - [x] Smoke the current 26.3 Forge and NeoForge clients through world load,
   terminal placement, rendering, screen open, and search input; 2026-10-30
   logs contain no Chestwise exception. These remain startup/screen smokes, not
   full feature walkthroughs. NeoForge also warned about low disk space; do not
   treat that session as save/reopen evidence.
-- [ ] Exercise the remaining mouse/keyboard controls and full-inventory,
-  protected-slot, and Deposit Matching/Deposit All cases on the candidate.
+- [ ] Finish cross-version mouse/keyboard interaction coverage on the
+  candidate. On 26.3 Fabric, full inventory blocked Restock without changing
+  source counts; a full chest refused a carried stack unchanged; and a chest
+  with exactly four spaces inserted four of 64, leaving 60 on the cursor.
+  Quick Stack/Deposit All, protected-slot preservation, drag, and representative
+  click paths are also recorded in the evidence; complete cross-version
+  interaction coverage remains open.
 - [x] Capture and review the three actual listing screenshots described in
   [`release-listing-0.1.0.md`](release-listing-0.1.0.md). They are real 26.3
   Fabric RC client captures; this does not close the other client walkthroughs.
@@ -63,6 +69,9 @@ The clean build, GameTests, hashes, and RC workflow runs are recorded in
 - [ ] Complete a runtime lifecycle walkthrough for chest/barrel removal,
   double-chest changes, chunk unload/reload, external source mutation, terminal
   removal, and player distance; verify no force-loading or stale mutation.
+  Container removal and a verified double-chest half change now have 26.3
+  Fabric evidence; terminal removal while open and distance rejection remain
+  open, with chunk unload and external mutation recorded on 1.21.1 Fabric.
 - [ ] Run a disposable-world soak with up to 128 mixed inventories, thousands
   of variants, repeated search/sort/transfers/Restock, and external mutations;
   record tick behavior, pauses, errors, and memory trend.

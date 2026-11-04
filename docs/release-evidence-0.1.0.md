@@ -13,8 +13,8 @@ coverage, and owner-controlled platform setup remain open.
 | Candidate branch | `release/0.1.0-rc` |
 | RC branch base | `b14fa7ee0108235487feb7ebae37cb543ccdec45` |
 | Tested code candidate | `c50841fb0b9469ea841c0eceba19cbea58e85624` on `release/0.1.0-rc` |
-| Evidence update | Reconciled after CI on the tested code candidate and additional isolated client sessions on 2026-10-30; documentation-only follow-up does not change runtime artifacts |
-| Evidence date | 2026-10-30 |
+| Evidence update | Reconciled after CI on the tested code candidate and additional isolated client sessions through 2026-11-04; documentation-only follow-up does not change runtime artifacts |
+| Evidence date | 2026-11-04 |
 | Support matrix | Minecraft 1.20.1, 1.21.1, and 26.3; Fabric, Forge, NeoForge |
 | Release channel | Beta; artifact version remains `0.1.0` |
 
@@ -112,6 +112,44 @@ A second 1.21.1 Fabric session with that same artifact reopened the prepared
 world, filtered the list to 12 diamonds, changed the sort mode to Name, and
 saved/closed the world. Search and sort were observed in the live GUI; this
 short follow-up did not repeat withdrawal or deposit.
+
+On 2026-11-04, an isolated Prism client launched the same 1.21.1 Fabric
+production JAR (SHA-256
+`3b0a95e63597c86756e81cc947519bb687c1f2af30e6366be0b3bdc99cc5864c`). In the
+disposable world, the player set an Oak Planks target to 64, and Restock moved
+60 planks from a physical chest stack of 64, leaving 64 with the player and 4
+in the chest. The player then crafted four planks from an oak log in the
+Terminal grid. After an orderly world save/shutdown and reopen, the Targets
+screen still showed Oak Planks ×64 and the physical storage remained present.
+The session also confirmed `oak` filtering and the `Qty`→`Name` sort control.
+No Chestwise exception was present in the clean-run log. This focused round
+trip supplements the earlier 1.21.1 UI evidence; it is not the full release
+walkthrough across all controls.
+
+On 2026-11-04, an isolated Prism client launched the 1.20.1 Fabric production
+JAR (SHA-256
+`cfd26ad6821659642d5eb112f854815d6231fa31641afaadbe8ff693903ea0ce`) in the
+disposable creative test world. The terminal block rendered, the screen opened,
+`oak` filtered the aggregate to oak logs/planks, `Qty` changed to `Name`, and
+the inventory key closed the screen. Server-side inspection confirmed the
+prepared chest still contained 64 oak logs, 64 torches, and 64 iron ingots;
+the player's iron, planks, and torches remained present. This session did not
+complete a verified deposit, crafting, or Restock operation and therefore
+does not close the 1.20.1 release walkthrough. The world saved and shut down
+cleanly. The log had expected offline-profile authentication/profile-key and
+Realms errors (HTTP 401); it had no Chestwise exception. An earlier malformed
+`options.txt` from this disposable Prism profile was moved aside before the
+clean run and is not attributed to Chestwise.
+
+A follow-up probe in the same 1.20.1 Fabric instance on 2026-11-04 logged
+`Loaded 7 recipes` and `Loaded 1271 advancements`. The vanilla
+`minecraft:oak_planks` recipe was accepted by `/recipe take` and `/recipe give`,
+confirming that recipe ID was registered. The subsequent attempt to verify a
+vanilla crafting-table result did not establish that ingredients had actually
+entered its grid, so it is inconclusive and is not counted as either a
+crafting failure or a successful craft. No root cause is assigned to the low
+recipe count from this observation alone. The disposable world shut down
+gracefully at 08:20:47 local time, with all dimensions logged as saved.
 
 The current 26.3 Forge artifact, SHA-256
 `5a6a7290266a35e4efa26661ac56652e7cea710b96c22f407251fec17f3d5302`, loaded
@@ -211,12 +249,89 @@ crafting grid still held 52 logs and the target still showed 52 logs. Forge
 `iron`. NeoForge 26.3 loaded the prepared world and terminal, opened the screen,
 and filtered `iron`. No Chestwise exception was found in these five logs.
 
+A separate 26.3 Fabric save/reopen walkthrough on 2026-10-30 used the same
+production artifact (`737329c2e76df7a32da952d5e428be2491fae9e872a5e387d4e6f738d47d1925`)
+in the isolated `Chestwise RC - Fabric 26.3` Prism instance. In the disposable
+world, search for `oak` filtered the aggregate list, sort mode displayed
+`Name`, locate displayed the cobblestone total and particles, and a protected
+player-inventory stack remained unchanged through Quick Stack and Deposit All.
+Left/right-click transfers, shift-click withdrawal, and one crafting operation
+were observed. Restock moved the four available oak logs and 64 torches from
+physical storage; the player ended with four logs and 64 torches, while the
+source chest's torch count fell from 160 to 96 and its oak-log stack was
+emptied. After a clean world shutdown and reopen, the terminal still held 61
+oak logs in its shared crafting grid, showed the recalculated four-plank
+result, and retained oak-log 64 and torch 64 targets. The final client log
+contained no Chestwise exception or error. This adds current-artifact 26.3
+evidence for those interactions and persistence, but does not close the
+full three-line walkthrough or the remaining-control checklist.
+
+On 2026-11-03, the same 26.3 Fabric artifact was used for additional
+disposable-world interaction/lifecycle checks. Removing a populated source
+chest with `/setblock` while the Terminal screen remained open removed its
+items from the aggregate view. A real adjacent double chest was verified as
+`type=left`/`type=right`; its two halves contained 10 and 20 iron ingots, and
+the Terminal displayed 30. Removing the left half left the right chest's 20
+ingots and the aggregate displayed 20, with no duplicate count. A protected
+12-plank hotbar stack remained in the player inventory after Deposit All and
+Quick Stack; the server inventory and physical chest were queried and each
+still held 12 planks. A drag from that player slot across aggregate slots also
+left both counts unchanged after the carried stack was returned. This validates
+these specific interactions only; it does not cover a full player inventory,
+terminal removal while its menu is open, or distance rejection. The world was
+saved and the client shut down cleanly. The log contained no Chestwise error;
+it did contain one startup `Can't keep up` warning during world/chunk warmup.
+
 The 1.21.1 run also changed a nearby barrel externally from seven to eleven
 iron, observed the refreshed aggregate, withdrew the eleven, removed the empty
 barrel, and confirmed the iron entry disappeared. `/forceload query` reported no
 forced chunks; after moving away, the source chunk was confirmed unloaded, and
 returning caused normal rediscovery. This is direct evidence for that tested
 source, not a chunk-ticket profiler or a complete lifecycle certification.
+
+On 2026-11-04, the same 26.3 Fabric production artifact was used in the
+disposable walkthrough world for inventory-capacity boundaries. With all 36
+player storage slots occupied by 64 cobblestone each, Restock left the player
+inventory unchanged and left the chest's four oak logs and 64 torches intact.
+For carried-stack insertion, the only physical chest was filled in all 27 slots:
+one cobblestone stack of 60 and 26 full dirt stacks. Depositing a carried stack
+of 64 cobblestone inserted exactly four; the cursor retained 60. After returning
+that remainder to the newly freed player slot, server-side data showed 2,300
+player cobblestone and 64 in the chest (2,364 total), with all 26 dirt stacks
+unchanged. Repeating with the chest's cobblestone stack already full left the
+60-item carried stack and all 27 chest stacks unchanged. These are observed
+26.3 Fabric capacity checks; they do not replace cross-version interaction
+coverage.
+
+In a separate isolated 26.3 Fabric terminal/barrel test on 2026-11-04, a
+60-diamond barrel stack and a 64-diamond player stack were used to exercise
+carried-stack limits. Left-click deposit filled the barrel to 64 and left 60
+on the cursor; NBT confirmed 60 in player inventory plus 64 in the barrel
+(124 before and after). The barrel was then set to 63 and the player held 60:
+right-click deposited exactly one, filling the barrel to 64 and leaving 59.
+A further right-click against the full barrel left both counts unchanged.
+Closing the terminal returned the cursor stack; NBT showed 59 diamonds in the
+player inventory and 64 in the barrel (123 before and after the one-item
+deposit). This confirms partial capacity, single-item deposit, full-storage
+refusal, and close-with-cursor for this 26.3 Fabric client session.
+
+The same isolated world then exercised the visible bulk-deposit controls. The
+barrel had dirt stacks with four free spaces in one stack; the player held 10
+dirt, 5 oak logs, and 8 torches. Quick Stack inserted only four dirt and left
+6 dirt, all 5 logs, and all 8 torches with the player. After confirming the
+barrel slot reached 64 dirt, Deposit All against the now-full 27-slot barrel
+left those three player stacks unchanged. Server-side NBT confirmed the exact
+counts; this covers matching-only partial insertion and full-storage refusal
+for Deposit All in this 26.3 Fabric session.
+
+Later on 2026-11-04, the 26.3 Fabric production artifact with SHA-256
+`737329c2e76df7a32da952d5e428be2491fae9e872a5e387d4e6f738d47d1925` was used
+to craft through the Terminal. Five oak logs were placed in the shared grid;
+two result clicks produced eight oak planks in the player inventory and left
+three oak logs in the grid. `/data get entity @s Inventory` confirmed 8 planks,
+and `/data get block 1000 64 1000` confirmed the terminal still held 3 logs.
+This verifies recipe result display, repeated result-taking, ingredient
+consumption, and shared-grid persistence for this 26.3 Fabric session.
 
 The 1.21.1 GUI soak showed 76 result pages and F3 server tick samples around
 4.7–5.6 ms/tick during the observed window; process RSS was approximately
@@ -233,11 +348,10 @@ NeoForge 26.3 session also emitted Minecraft's low-disk-space warning (about
 42 MB remained on C:); chunk saves and orderly shutdown were logged, but this
 session is not used as persistence evidence.
 
-The release-requested full client walkthrough and remaining-control checklist
-are still open: the 2026-10-30 sessions added current-artifact UI and feature
-evidence but did not execute every requested control and feature sequence on
-each official Fabric line. The 26.3 Forge/NeoForge runs remain startup/screen
-smokes, not full feature walkthroughs.
+The release-requested full client walkthrough remains open: current-artifact
+sessions added UI and feature evidence, but did not execute every requested
+control and feature sequence on each official Fabric line. The 26.3
+Forge/NeoForge runs remain startup/screen smokes, not full feature walkthroughs.
 
 ## Multiplayer, lifecycle, performance, and storage compatibility
 
@@ -245,7 +359,7 @@ smokes, not full feature walkthroughs.
 | --- | --- | --- |
 | Two independent players mutating the same source | On 2026-10-21, two separate Prism clients (RCAlpha and RCBravo) connected to a disposable 26.3 Fabric dedicated server in offline-mode loopback. Iron contention conserved 64 total (one player received 64, the other 0, source 0). Deposit Matching versus withdraw conserved 96 (source 32, withdrawing player's cursor 64, depositor 0). Two Restock targets against 64 stored arrows plus one held by each ended at 64 and 2 player arrows, source 0 (66 total). Requests were close together but serialized on the server thread; this was not a deliberately synchronized packet-race test or authenticated public-server test. | PASS — bounded two-client test |
 | Disconnect while interacting | One client disconnected with the terminal/target UI open; the other continued withdrawing from the shared source. No lock, Chestwise exception, or stalled menu was observed; server shut down cleanly. Counts were checked for the contention scenarios above, not as a separate disconnect race. | PASS — bounded offline-mode test |
-| Container removal, double chest, chunk unload/reload, terminal removal, distance | On 2026-10-30 in 1.21.1 Fabric, adding a barrel with seven iron, externally changing it to eleven, withdrawing, and removing it refreshed the aggregate correctly. The source chunk also unloaded after leaving and was rediscovered on return. Double-chest half changes, terminal removal with a menu open, and distance rejection were not manually exercised in this session; several invalidation cases have GameTest coverage. | PARTIAL / OPEN |
+| Container removal, double chest, chunk unload/reload, terminal removal, distance | On 2026-10-30 in 1.21.1 Fabric, adding a barrel with seven iron, externally changing it to eleven, withdrawing, and removing it refreshed the aggregate correctly. The source chunk also unloaded after leaving and was rediscovered on return. On 2026-11-03 in 26.3 Fabric, removing a chest while the Terminal screen was open cleared its aggregate entry. A verified left/right double chest counted 10+20 iron as 30; removing its left half left 20 in the remaining chest and aggregate. Terminal removal while its menu is open and server-side rejection beyond interaction distance remain untested manually; several invalidation cases have GameTest coverage. | PARTIAL / OPEN |
 | Mixed-inventory load/soak near configured maximum | Disposable Forge 26.3 world used 127 barrels (3,429 slots; about 3,425 occupied; about 31 item identities, including damaged swords). Two measured windows totaled 4,115 ticks / 205.71 seconds at about 20 TPS; RSS was 2.86→2.84 GB and private bytes 3.143→3.120 GB. Search, namespace/tag filtering, sorting, withdrawal, Deposit All, and Restock were exercised; no Chestwise exception or obvious tick/memory pathology observed. The additional 1.21.1 Fabric GUI session lasted about 132 seconds and displayed 76 result pages, with F3 samples around 4.7–5.6 ms/tick and process RSS around 1.68–1.78 GB. Neither run establishes an exact count of unique identities or satisfies the requested long mixed-container soak with concurrent mutations. | PARTIAL / OPEN |
 | No force-loading during discovery | In the 2026-10-30 1.21.1 Fabric session, `/forceload query` reported none; after moving away, the tested source chunk was confirmed unloaded, then rediscovered on return. No chunk-ticket profiler was used. | PASS — bounded natural-unload observation |
 | Third-party storage contracts | Storage Drawers `26.3.0.1+fabric` on Fabric 26.3; Upgraded Iron Chests `1.5` on Forge 26.3; Sophisticated Storage `26.3-1.5.124.2189` + Core `26.3-1.5.17.2421` on NeoForge 26.3. All three were discovered and exercised for withdrawal/insertion without observed duplication; this is limited spot coverage, not blanket compatibility. The Sophisticated chest held 17 emeralds; Chestwise withdrew 8, returned them, and the 17-item count survived save/reopen. NeoForge Storage Drawers separately failed at startup with upstream `NoSuchFieldError: ModConfig$Type.COMMON`. | PASS — representative contracts only |
