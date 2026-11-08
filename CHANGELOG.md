@@ -4,7 +4,7 @@ All notable changes are documented here. This project follows semantic
 versioning for its own API and behavior; Minecraft-version compatibility is
 also encoded in each artifact name.
 
-## 0.1.0 - Unreleased
+## 0.1.0 - 2026-11-08
 
 - Initial public-release candidate.
 - Added the Storage Terminal, cached nearby-inventory discovery, exact item
